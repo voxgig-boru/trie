@@ -4,12 +4,12 @@
 # and a TrieSet built from identical keys agree exactly.
 #
 # Run:
-#   aql test/tst_prop_spec.aql
+#   boru test/tst_prop_spec.aql
 
 
 import "boru:test"
-import "./tst.aql"
-import "./trie.aql"
+import "../tst.aql"
+import "../trie.aql"
 
 
 def charset "abcdefghijklmnopqrstuvwxyz"
@@ -129,7 +129,11 @@ def _ (specs each [ var [[s] (s Test.run-property end) report 0 ] ])
 
 # --- summary -------------------------------------------------------
 
-"---" print
-"fail count: " print Test.fail-count end print
-0 Test.fail-count end Assert.equal end
-"all green" print
+# One terminated statement per line: `"---" print "fail count: " …` lets
+# `print` collect the NEXT literal forward, so an unterminated chain prints
+# out of order and leaves a stray value for the assertion to compare.
+"---" print end
+"fail count: " print end
+(Test.fail-count) print end
+Assert.equal 0 (Test.fail-count) end
+"all green" print end

@@ -1,4 +1,4 @@
-# trie: a standard prefix tree (trie) over String keys, in AQL.
+# trie: a standard prefix tree (trie) over String keys, in boru.
 #
 # This file exports TWO namespaces from one module:
 #
@@ -23,7 +23,7 @@
 # `kids set (ch) child` updates, `kids get (ch)` lookups, and `StructUtil.items`
 # enumeration (which yields KEY-SORTED [char, node] pairs — so every traversal
 # below emits keys in lexicographic order by construction, and listing words
-# need no trailing sort). Earlier aql could not build or walk a map with
+# need no trailing sort). Earlier boru could not build or walk a map with
 # computed keys, which forced children into an association list; that gap was
 # closed upstream, and the list workaround is retired.
 #
@@ -33,12 +33,14 @@
 # shared, never mutated. (We still never use StructUtil.merge to update a
 # node — it is a deep, index-wise merge.)
 #
-# Calling convention: like the rest of AQL, the receiver comes first and the
-# arguments follow — `t key val TrieMap.set`. Forward args have precedence, so
-# a call resolves at the next word or paren; `end`/parens are needed only to
-# separate a call from a following bare literal.
+# Calling convention: every public word takes the receiver (the trie) LAST, so
+# forward `TrieMap.set val key t` and pipe `t TrieMap.set val key` both bind (as
+# does all-stack `t key val TrieMap.set`); only receiver-first-all-forward
+# misbinds. A call resolves at the next word or paren; `end`/parens are needed
+# only to separate a call from a following bare literal.
 #
-# Imported via `import "./trie.aql"`. The only dependency is the standard
+# Imported via `import "./trie.aql"` (a relative import resolves against the
+# importing file's own directory). The only dependency is the standard
 # `boru:struct-util` module (map enumeration + jsonic parsing).
 
 import "boru:struct-util"
@@ -52,7 +54,7 @@ def empty-node fn [
 ]
 
 # Build a node from its three fields. The flag parameter is named `fin` (not
-# `end`) because `end` is the AQL call terminator and cannot be a binding name;
+# `end`) because `end` is the boru call terminator and cannot be a binding name;
 # the stored *field* is still "end". Call: `kids val fin mk-node`.
 def mk-node fn [
   [fin:Any val:Any kids:Any] [Map] [
@@ -411,9 +413,10 @@ def trie-match fn [
 
 # --- TrieMap surface ------------------------------------------------
 #
-# Signatures are written in reverse of the call order (the AQL rule that the
-# first parameter is the top of the stack), so each call reads receiver-first:
-# `t key val TrieMap.set end`.
+# Signatures list the receiver LAST. A call fills its parameters in signature
+# order — forward arguments first, then the rest from the value stack, top
+# first — so forward `TrieMap.set val key t`, pipe `t TrieMap.set val key`
+# and all-stack `t key val TrieMap.set` all bind the same way.
 
 def map-make fn [ [] [Map] [empty-node] ]
 
@@ -544,39 +547,39 @@ def set-decode fn [ [s:String] [Map] [ s decode-set ] ]
 # --- namespaces -----------------------------------------------------
 
 export "TrieMap" {
-  make:                map-make/r
-  set:                 map-set/r
-  get:                 map-get/r
-  has:                 map-has/r
-  delete:              map-delete/r
-  keys:                map-keys/r
-  values:              map-values/r
-  entries:             map-entries/r
-  size:                map-size/r
-  height:              map-height/r
-  keys-with-prefix:    map-keys-with-prefix/r
-  entries-with-prefix: map-entries-with-prefix/r
-  longest-prefix:      map-longest-prefix/r
-  within:              map-within/r
-  match:               map-match/r
-  from-entries:        map-from-entries/r
-  encode:              map-encode/r
-  decode:              map-decode/r
+  make:                map-make/v
+  set:                 map-set/v
+  get:                 map-get/v
+  has:                 map-has/v
+  delete:              map-delete/v
+  keys:                map-keys/v
+  values:              map-values/v
+  entries:             map-entries/v
+  size:                map-size/v
+  height:              map-height/v
+  keys-with-prefix:    map-keys-with-prefix/v
+  entries-with-prefix: map-entries-with-prefix/v
+  longest-prefix:      map-longest-prefix/v
+  within:              map-within/v
+  match:               map-match/v
+  from-entries:        map-from-entries/v
+  encode:              map-encode/v
+  decode:              map-decode/v
 }
 
 export "TrieSet" {
-  make:           set-make/r
-  add:            set-add/r
-  has:            set-has/r
-  delete:         set-delete/r
-  keys:           set-keys/r
-  size:           set-size/r
-  height:         set-height/r
-  with-prefix:    set-with-prefix/r
-  longest-prefix: set-longest-prefix/r
-  within:         set-within/r
-  match:          set-match/r
-  from-keys:      set-from-keys/r
-  encode:         set-encode/r
-  decode:         set-decode/r
+  make:           set-make/v
+  add:            set-add/v
+  has:            set-has/v
+  delete:         set-delete/v
+  keys:           set-keys/v
+  size:           set-size/v
+  height:         set-height/v
+  with-prefix:    set-with-prefix/v
+  longest-prefix: set-longest-prefix/v
+  within:         set-within/v
+  match:          set-match/v
+  from-keys:      set-from-keys/v
+  encode:         set-encode/v
+  decode:         set-decode/v
 }

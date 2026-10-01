@@ -10,11 +10,11 @@
 # return a Boolean.
 #
 # Run:
-#   aql test/trie_prop_spec.aql
+#   boru test/trie_prop_spec.aql
 
 
 import "boru:test"
-import "./trie.aql"
+import "../trie.aql"
 
 
 # Lowercase keys keep generated input readable; lengths stay short so the
@@ -22,7 +22,7 @@ import "./trie.aql"
 def charset "abcdefghijklmnopqrstuvwxyz"
 
 
-# True when string `s` begins with `pfx` (AQL has no prefix word).
+# True when string `s` begins with `pfx` (boru has no core prefix word).
 # Call: `s pfx starts-with`.
 def starts-with fn [
   [pfx:String s:String] [Boolean] [
@@ -182,7 +182,11 @@ def _ (specs each [
 
 # --- summary -------------------------------------------------------
 
-"---" print
-"fail count: " print Test.fail-count end print
-0 Test.fail-count end Assert.equal end
-"all green" print
+# One terminated statement per line: `"---" print "fail count: " …` lets
+# `print` collect the NEXT literal forward, so an unterminated chain prints
+# out of order and leaves a stray value for the assertion to compare.
+"---" print end
+"fail count: " print end
+(Test.fail-count) print end
+Assert.equal 0 (Test.fail-count) end
+"all green" print end

@@ -35,12 +35,14 @@
 # core `add`, edges updated with copy-returning Map `set`, and nodes rebuilt
 # with an explicit constructor — never StructUtil.merge, which deep-merges.
 #
-# Calling convention: like the rest of AQL, the receiver comes first and the
-# arguments follow — `t key val RadixMap.set`. Forward args have precedence, so
-# a call resolves at the next word or paren; `end`/parens are needed only to
-# separate a call from a following bare literal.
+# Calling convention: every public word takes the receiver (the trie) LAST, so
+# forward `RadixMap.set val key t` and pipe `t RadixMap.set val key` both bind (as
+# does all-stack `t key val RadixMap.set`); only receiver-first-all-forward
+# misbinds. A call resolves at the next word or paren; `end`/parens are needed
+# only to separate a call from a following bare literal.
 #
-# Imported via `import "./radix.aql"`. The only dependency is the standard
+# Imported via `import "./radix.aql"` (a relative import resolves against the
+# importing file's own directory). The only dependency is the standard
 # `boru:struct-util` module (map enumeration + jsonic parsing).
 
 import "boru:struct-util"
@@ -50,7 +52,7 @@ import "boru:struct-util"
 
 def empty-node fn [ [] [Map] [ {end: false, val: none, kids: {}} ] ]
 
-# Build a node from its fields. `fin` (not `end`) because `end` is the AQL
+# Build a node from its fields. `fin` (not `end`) because `end` is the boru
 # call terminator and cannot be a binding name. Call: `kids val fin mk-node`.
 def mk-node fn [
   [fin:Any val:Any kids:Any] [Map] [ do {end: [fin], val: [val], kids: [kids]} ]
@@ -72,7 +74,11 @@ def dead-node fn [
 def common-len fn [
   [a:String b:String] [Integer] [
     def m (if ((a size) lt (b size)) [a size] [b size])
-    def res (do {n: [0], ok: [true]} (iota m) [
+    # Plain map-literal init: works around boru compile defect "dynamic-scope
+    # def `m` of unpromoted computed value" (a `do {…}` at the head of a paren
+    # that then reads a fn-local def loses the def) — `do {n: [0], ok: [true]}`
+    # here is equivalent; remove when fixed upstream.
+    def res ({n: 0, ok: true} (iota m) [
       var [[i acc]
         if (acc "ok" get) [
           if ((a slice i (i 1 add)) (b slice i (i 1 add)) eq)
@@ -337,8 +343,8 @@ def radix-delete fn [
 
 # --- RadixMap surface -----------------------------------------------
 #
-# Signatures are the reverse of the call order, so calls read receiver-first:
-# `t key val RadixMap.set end`.
+# Signatures list the receiver LAST: forward `RadixMap.set val key t`, pipe
+# `t RadixMap.set val key`, or all-stack `t key val RadixMap.set`.
 
 # A [key, value] pair for `key` in `t`. Built with `push` because a
 # var-bound name does not resolve inside a nested list literal.
@@ -476,35 +482,35 @@ def set-decode fn [
 # --- namespaces -----------------------------------------------------
 
 export "RadixMap" {
-  make:                map-make/r
-  set:                 map-set/r
-  get:                 map-get/r
-  has:                 map-has/r
-  delete:              map-delete/r
-  keys:                map-keys/r
-  values:              map-values/r
-  entries:             map-entries/r
-  size:                map-size/r
-  height:              map-height/r
-  keys-with-prefix:    map-keys-with-prefix/r
-  entries-with-prefix: map-entries-with-prefix/r
-  longest-prefix:      map-longest-prefix/r
-  from-entries:        map-from-entries/r
-  encode:              map-encode/r
-  decode:              map-decode/r
+  make:                map-make/v
+  set:                 map-set/v
+  get:                 map-get/v
+  has:                 map-has/v
+  delete:              map-delete/v
+  keys:                map-keys/v
+  values:              map-values/v
+  entries:             map-entries/v
+  size:                map-size/v
+  height:              map-height/v
+  keys-with-prefix:    map-keys-with-prefix/v
+  entries-with-prefix: map-entries-with-prefix/v
+  longest-prefix:      map-longest-prefix/v
+  from-entries:        map-from-entries/v
+  encode:              map-encode/v
+  decode:              map-decode/v
 }
 
 export "RadixSet" {
-  make:           set-make/r
-  add:            set-add/r
-  has:            set-has/r
-  delete:         set-delete/r
-  keys:           set-keys/r
-  size:           set-size/r
-  height:         set-height/r
-  with-prefix:    set-with-prefix/r
-  longest-prefix: set-longest-prefix/r
-  from-keys:      set-from-keys/r
-  encode:         set-encode/r
-  decode:         set-decode/r
+  make:           set-make/v
+  add:            set-add/v
+  has:            set-has/v
+  delete:         set-delete/v
+  keys:           set-keys/v
+  size:           set-size/v
+  height:         set-height/v
+  with-prefix:    set-with-prefix/v
+  longest-prefix: set-longest-prefix/v
+  from-keys:      set-from-keys/v
+  encode:         set-encode/v
+  decode:         set-decode/v
 }

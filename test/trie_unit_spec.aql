@@ -20,11 +20,11 @@
 # the next trie. Only the exported namespace words are used as subjects.
 #
 # Run:
-#   aql test/trie_unit_spec.aql
+#   boru test/trie_unit_spec.aql
 
 
 import "boru:test"
-import "./trie.aql"
+import "../trie.aql"
 
 
 # --- the spec suite, built as data ---------------------------------
@@ -157,7 +157,11 @@ def _ (specs each [
 
 # --- summary -------------------------------------------------------
 
-"---" print
-"fail count: " print Test.fail-count end print
-0 Test.fail-count end Assert.equal end
-"all green" print
+# One terminated statement per line: `"---" print "fail count: " …` lets
+# `print` collect the NEXT literal forward, so an unterminated chain prints
+# out of order and leaves a stray value for the assertion to compare.
+"---" print end
+"fail count: " print end
+(Test.fail-count) print end
+Assert.equal 0 (Test.fail-count) end
+"all green" print end

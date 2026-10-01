@@ -1,18 +1,19 @@
 # Ternary-search-tree tests using boru:test's imperative API.
 #
-# Runs identically under the interpreter, `aql check`, and the bytecode
-# compiler:
-#   aql test/tst_unit_test.aql
-#   aql check test/tst_unit_test.aql
-#   aql --force-compile test/tst_unit_test.aql
+# Run it, and check it (boru has one execution path: the suite compiles to
+# bytecode and runs on the VM; `boru check` is the static surface):
+#   boru test/tst_unit_test.aql          # compile + run; must print `all green`
+#   boru check test/tst_unit_test.aql    # static check (0 errors)
 
 
 import "boru:test"
-import "./tst.aql"
+import "../tst.aql"
 
 
-# A shared immutable value (not a `fn`): tries never mutate, and a user-`fn`
-# call inside a `Test.test` quotation is a bytecode-compiler refusal.
+# A shared immutable value (not a `fn`): tries never mutate, so one value
+# serves every test. (Historically a user-`fn` call inside a `Test.test`
+# quotation was a bytecode-compiler refusal; on boru main @ 64c5ab2 both
+# shapes compile.)
 def fixture
   ((((( TstMap.make)
     "cat"  1 TstMap.set)
@@ -177,7 +178,11 @@ def fixture
 
 # --- summary -------------------------------------------------------
 
-"---" print
-"fail count: " print Test.fail-count end print
-0 Test.fail-count end Assert.equal end
-"all green" print
+# One terminated statement per line: `"---" print "fail count: " …` lets
+# `print` collect the NEXT literal forward, so an unterminated chain prints
+# out of order and leaves a stray value for the assertion to compare.
+"---" print end
+"fail count: " print end
+(Test.fail-count) print end
+Assert.equal 0 (Test.fail-count) end
+"all green" print end

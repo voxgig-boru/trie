@@ -10,7 +10,7 @@
 # fresh sub-buckets keyed by the next character. The shallow trie spine
 # stays small while most keys live in flat, cache-friendly buckets — the
 # idea a HAT-trie exploits for speed. (A true bitmap/array-mapped trie wants
-# fixed-width bit vectors, which AQL's data model does not provide; the
+# fixed-width bit vectors, which boru's data model does not provide; the
 # burst trie is the variant that maps naturally onto it.)
 #
 # --- representation -------------------------------------------------
@@ -36,12 +36,14 @@
 # core `add` (string concatenation). Membership is structural (`b-member`), so
 # a stored `none` value stays distinct from an absent key.
 #
-# Calling convention: like the rest of AQL, the receiver comes first and the
-# arguments follow — `t key val BurstMap.set`. Forward args have precedence, so
-# a call resolves at the next word or paren; `end`/parens are needed only to
-# separate a call from a following bare literal.
+# Calling convention: every public word takes the receiver (the trie) LAST, so
+# forward `BurstMap.set val key t` and pipe `t BurstMap.set val key` both bind (as
+# does all-stack `t key val BurstMap.set`); only receiver-first-all-forward
+# misbinds. A call resolves at the next word or paren; `end`/parens are needed
+# only to separate a call from a following bare literal.
 #
-# Imported via `import "./burst.aql"`. The only dependency is the standard
+# Imported via `import "./burst.aql"` (a relative import resolves against the
+# importing file's own directory). The only dependency is the standard
 # `boru:struct-util` module (map enumeration + jsonic parsing).
 
 import "boru:struct-util"
@@ -487,35 +489,35 @@ def set-decode fn [
 # --- namespaces -----------------------------------------------------
 
 export "BurstMap" {
-  make:                map-make/r
-  set:                 map-set/r
-  get:                 map-get/r
-  has:                 map-has/r
-  delete:              map-delete/r
-  keys:                map-keys/r
-  values:              map-values/r
-  entries:             map-entries/r
-  size:                map-size/r
-  height:              map-height/r
-  keys-with-prefix:    map-keys-with-prefix/r
-  entries-with-prefix: map-entries-with-prefix/r
-  longest-prefix:      map-longest-prefix/r
-  from-entries:        map-from-entries/r
-  encode:              map-encode/r
-  decode:              map-decode/r
+  make:                map-make/v
+  set:                 map-set/v
+  get:                 map-get/v
+  has:                 map-has/v
+  delete:              map-delete/v
+  keys:                map-keys/v
+  values:              map-values/v
+  entries:             map-entries/v
+  size:                map-size/v
+  height:              map-height/v
+  keys-with-prefix:    map-keys-with-prefix/v
+  entries-with-prefix: map-entries-with-prefix/v
+  longest-prefix:      map-longest-prefix/v
+  from-entries:        map-from-entries/v
+  encode:              map-encode/v
+  decode:              map-decode/v
 }
 
 export "BurstSet" {
-  make:           set-make/r
-  add:            set-add/r
-  has:            set-has/r
-  delete:         set-delete/r
-  keys:           set-keys/r
-  size:           set-size/r
-  height:         set-height/r
-  with-prefix:    set-with-prefix/r
-  longest-prefix: set-longest-prefix/r
-  from-keys:      set-from-keys/r
-  encode:         set-encode/r
-  decode:         set-decode/r
+  make:           set-make/v
+  add:            set-add/v
+  has:            set-has/v
+  delete:         set-delete/v
+  keys:           set-keys/v
+  size:           set-size/v
+  height:         set-height/v
+  with-prefix:    set-with-prefix/v
+  longest-prefix: set-longest-prefix/v
+  from-keys:      set-from-keys/v
+  encode:         set-encode/v
+  decode:         set-decode/v
 }

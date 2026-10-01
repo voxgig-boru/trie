@@ -1,4 +1,4 @@
-# tst: a ternary search tree over String keys, in AQL.
+# tst: a ternary search tree over String keys, in boru.
 #
 # This file exports TWO namespaces from one module:
 #
@@ -28,12 +28,14 @@
 # TSTs here are PERSISTENT: every mutator returns a new tree, rebuilding the
 # nodes along the edited path. Paths are assembled with core `add`.
 #
-# Calling convention: like the rest of AQL, the receiver comes first and the
-# arguments follow — `t key val TstMap.set`. Forward args have precedence, so
-# a call resolves at the next word or paren; `end`/parens are needed only to
-# separate a call from a following bare literal.
+# Calling convention: every public word takes the receiver (the trie) LAST, so
+# forward `TstMap.set val key t` and pipe `t TstMap.set val key` both bind (as
+# does all-stack `t key val TstMap.set`); only receiver-first-all-forward
+# misbinds. A call resolves at the next word or paren; `end`/parens are needed
+# only to separate a call from a following bare literal.
 #
-# Imported via `import "./tst.aql"`. The only dependency is the standard
+# Imported via `import "./tst.aql"` (a relative import resolves against the
+# importing file's own directory). The only dependency is the standard
 # `boru:struct-util` module (jsonic parsing for `decode`).
 
 import "boru:struct-util"
@@ -186,7 +188,10 @@ def count-t fn [
       def l ((nd "lo" get) count-t)
       def m ((nd "mid" get) count-t)
       def h ((nd "hi" get) count-t)
-      here l add m add h add
+      # Infix chain (STYLE-GUIDE §S2): works around boru compile defect
+      # NUR357 ("a gradual operand collected forward … with no statement
+      # island") that the stack chain `here l add m add h add` hits.
+      here add l add m add h
     ]
   ]
 ]
@@ -247,7 +252,8 @@ def tst-delete fn [
 # --- TstMap surface -------------------------------------------------
 #
 # The tree parameter is typed `Any` because an empty tree is `none`, not a
-# Map. Calls read receiver-first: `t key val TstMap.set end`.
+# Map. The receiver is LAST: forward `TstMap.set val key t`, pipe
+# `t TstMap.set val key`, or all-stack `t key val TstMap.set`.
 
 def map-make fn [ [] [Any] [none] ]
 
@@ -391,35 +397,35 @@ def set-decode fn [
 # --- namespaces -----------------------------------------------------
 
 export "TstMap" {
-  make:                map-make/r
-  set:                 map-set/r
-  get:                 map-get/r
-  has:                 map-has/r
-  delete:              map-delete/r
-  keys:                map-keys/r
-  values:              map-values/r
-  entries:             map-entries/r
-  size:                map-size/r
-  height:              map-height/r
-  keys-with-prefix:    map-keys-with-prefix/r
-  entries-with-prefix: map-entries-with-prefix/r
-  longest-prefix:      map-longest-prefix/r
-  from-entries:        map-from-entries/r
-  encode:              map-encode/r
-  decode:              map-decode/r
+  make:                map-make/v
+  set:                 map-set/v
+  get:                 map-get/v
+  has:                 map-has/v
+  delete:              map-delete/v
+  keys:                map-keys/v
+  values:              map-values/v
+  entries:             map-entries/v
+  size:                map-size/v
+  height:              map-height/v
+  keys-with-prefix:    map-keys-with-prefix/v
+  entries-with-prefix: map-entries-with-prefix/v
+  longest-prefix:      map-longest-prefix/v
+  from-entries:        map-from-entries/v
+  encode:              map-encode/v
+  decode:              map-decode/v
 }
 
 export "TstSet" {
-  make:           set-make/r
-  add:            set-add/r
-  has:            set-has/r
-  delete:         set-delete/r
-  keys:           set-keys/r
-  size:           set-size/r
-  height:         set-height/r
-  with-prefix:    set-with-prefix/r
-  longest-prefix: set-longest-prefix/r
-  from-keys:      set-from-keys/r
-  encode:         set-encode/r
-  decode:         set-decode/r
+  make:           set-make/v
+  add:            set-add/v
+  has:            set-has/v
+  delete:         set-delete/v
+  keys:           set-keys/v
+  size:           set-size/v
+  height:         set-height/v
+  with-prefix:    set-with-prefix/v
+  longest-prefix: set-longest-prefix/v
+  from-keys:      set-from-keys/v
+  encode:         set-encode/v
+  decode:         set-decode/v
 }

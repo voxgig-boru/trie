@@ -1,21 +1,20 @@
 # Standard-trie tests using boru:test's imperative API.
 #
-# Runs identically under the interpreter, `aql check`, and the bytecode
-# compiler:
-#   aql test/trie_unit_test.aql                 # interpreter
-#   aql check test/trie_unit_test.aql           # static check (0 errors)
-#   aql --force-compile test/trie_unit_test.aql # bytecode VM
+# Run it, and check it (boru has one execution path: the suite compiles to
+# bytecode and runs on the VM; `boru check` is the static surface):
+#   boru test/trie_unit_test.aql          # compile + run; must print `all green`
+#   boru check test/trie_unit_test.aql    # static check (0 errors)
 
 
 import "boru:test"
-import "./trie.aql"
+import "../trie.aql"
 
 
 # A small fixture map: cat=1 car=2 card=3 dog=4. Tries are immutable, so a
 # single shared value is safe to reuse across every test (nothing mutates it;
-# derivations rebind). Bound as a value, not a `fn`: a user-`fn` call inside a
-# `Test.test` quotation is a Stage-3 bytecode-compiler refusal ("body leaves
-# extra values"), so the fixture is a value to keep the bodies compilable.
+# derivations rebind). Bound as a value, not a `fn`. (Historically a user-`fn`
+# call inside a `Test.test` quotation was a Stage-3 bytecode-compiler refusal;
+# on boru main @ 64c5ab2 both shapes compile.)
 def fixture
   ((((( TrieMap.make)
     "cat"  1 TrieMap.set)
@@ -244,7 +243,11 @@ def fixture
 
 # --- summary -------------------------------------------------------
 
-"---" print
-"fail count: " print Test.fail-count end print
-0 Test.fail-count end Assert.equal end
-"all green" print
+# One terminated statement per line: `"---" print "fail count: " …` lets
+# `print` collect the NEXT literal forward, so an unterminated chain prints
+# out of order and leaves a stray value for the assertion to compare.
+"---" print end
+"fail count: " print end
+(Test.fail-count) print end
+Assert.equal 0 (Test.fail-count) end
+"all green" print end
