@@ -1,17 +1,20 @@
 # Performance baseline workload for the trie library.
 #
 # Builds a TrieSet of N deterministic keys, then exercises the hot paths:
-# membership sweep, prefix collection, and a full keys() dump. Run under the
-# interpreter (`aql --no-compile`) and the bytecode compiler (`aql --compile`)
-# to compare; see bench/run.sh and PERF-BASELINE.md.
+# membership sweep, prefix collection, and a full keys() dump. boru has one
+# execution path (compile to bytecode, run on the VM); time it with
+# bench/run.sh, see PERF-BASELINE.md.
 #
-# N is overridden by run.sh via sed; keep this line's shape stable.
-import "./trie.aql"
+# `n` is overridden by run.sh via sed; keep this line's shape stable. It must
+# be lowercase: since boru's Stage 2 type flip (2026-08-20) a capitalised
+# `def N 1000` binds a singleton literal TYPE, not the Integer, so `iota N`
+# is `[]` and the whole bench silently does no work.
+import "../trie.aql"
 
-def N 1000
+def n 1000
 
 # N distinct keys from a deterministic generator (no RNG — reproducible).
-def ks (iota N each [ var [[i] `k${i}x${(i mul 7 mod 1000)}` ] ])
+def ks (iota n each [ var [[i] `k${i}x${(i mul 7 mod 1000)}` ] ])
 
 # Build the set (fold; each add returns the next immutable trie).
 def s ((TrieSet.make) ks [ var [[w acc] acc w TrieSet.add end ] ] fold)
