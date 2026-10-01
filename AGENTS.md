@@ -8,7 +8,7 @@ a downstream project) and **extending** it. Human docs: `README.md`, `docs/`
 The four modules depend only on the **standard `boru:struct-util` module**
 (map enumeration + jsonic parse/serialise), which ships with `boru` — no
 third-party dependencies. Every example below is verified against boru main
-@ `64c5ab2` (2026-09-30).
+@ `64c5ab2` (2026-09-30), re-executed from a scratch file on 2026-10-01.
 
 ---
 
@@ -199,6 +199,12 @@ Exact call-forms, arg order, and return types: `api.json` (structured) and
 10. A value read back through `decode` compares equal under `eq`/`deq`, but a
     decoded `none` (JSON `null` hydrated) is **not** `Assert.equal` to the
     `none` literal — assert with `eq` in that one case.
+    **And the reverse trap:** on boru main @ `64c5ab2`, `Assert.equal` passes
+    when a zero-valued `""` / `0` / `false` meets `none` or a value of another
+    type (`Assert.equal "" none` passes — an upstream defect, see
+    `DX-REPORT.md`). When the actual might be `none` — `get`,
+    `longest-prefix` — assert type-strictly:
+    `true ((t "q" TrieSet.longest-prefix) "" eq) Assert.equal end`.
 11. **Pass a function as data with `/v`.** A bare name (or namespace member)
     that holds a function now **calls** wherever it appears; write
     `TrieSet.has/v` to hand the word over as a value. (`/v` replaced the old
@@ -276,10 +282,21 @@ boru main @ `64c5ab2`); the load-bearing boru traps are:
 - **A var-bound name does not resolve inside a nested list literal** —
   `var [[pair a] … a [(pair get 1)] push]` fails with `undefined word`;
   bind through `def` first (`def v (pair get 1)`, then `[v]`).
+- **Group a stack-form `push` chain inside a loop body** —
+  `([] k push) v push`, not `[] k push v push`. Inside an `each [var …]`
+  body of a fn that is called through its export from another module, the
+  ungrouped chain raises `signature_error: cannot call push` (it answers when
+  the fn is called in-module, and `boru check` is clean) — an open boru
+  defect; `tst.aql`/`burst.aql` `entries-with-prefix` carry the workaround.
+  The suites import the modules, so they exercise the cross-module path;
+  `entries-with-prefix` now has a unit case on every variant.
 - **Initialise a `fold` accumulator with a plain map literal**, not
   `do {k: [v]}`: inside a fn body, a `do {…}` at the head of a paren that then
   reads a fn-local def loses that def (an open boru compiler defect —
   `radix.aql`'s `common-len` carries the workaround).
+- **Sum recursive results infix** — `here add l add m add h`, not the stack
+  chain `here l add m add h add`, which refuses to compile in a recursive fn
+  ("a gradual operand collected forward … (NUR357)"; `tst.aql`'s `count-t`).
 - **`filter` takes a `[…]` quotation** like `each`/`fold` (var-destructure
   bodies included), so keep-folds are only needed when the predicate must see
   the accumulator.

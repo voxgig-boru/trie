@@ -8,7 +8,7 @@ description: Use when writing or editing boru code that calls this trie / prefix
 Fast prefix search, autocomplete, and longest-prefix matching over String
 keys, as a **set** of keys or a **map** from keys to values, in four
 interchangeable variants. Everything below is verified against boru main
-@ `64c5ab2`.
+@ `64c5ab2` (re-executed 2026-10-01).
 
 ## Import
 
@@ -66,7 +66,8 @@ import "./trie.aql"        # or radix.aql / tst.aql / burst.aql
 `size` · `height` · `from-entries` · `encode` · `decode`
 `TrieSet`/`TrieMap` add `within` (fuzzy) and `match` (wildcard, `?`/`*`).
 
-`keys`, `values`, `entries`, `with-prefix`, `keys-with-prefix` are **sorted**.
+`keys`, `values`, `entries`, `with-prefix`, `keys-with-prefix`,
+`entries-with-prefix` are **sorted**.
 `get` returns `none` / `has` returns `false` for an absent key (never an error).
 
 ## Idioms (verified)
@@ -103,6 +104,7 @@ print (back "POST" TrieMap.get)             # => 2
 | `(a) print` then more code on the next line | `print (a)` | `print` collects forward; the unterminated form grabs the next token. |
 | `merge` to update a node | rebuild with the explicit `mk-*` constructor; `StructUtil.setpath` for one field | `StructUtil.merge` is a **deep, index-wise** merge (nested lists merge by index). |
 | `["a"] ["a"] eq` to compare lists | `["a"] ["a"] deq` (structural) or `Assert.equal` | `eq` is **identity**; use `deq` for structural equality of Maps/Lists. |
+| `"" (t "q" TrieSet.longest-prefix) Assert.equal` | `true ((t "q" TrieSet.longest-prefix) "" eq) Assert.equal` | on boru main @ `64c5ab2` `Assert.equal` passes a zero-valued `""`/`0`/`false` against `none` or another type (upstream defect); compare type-strictly when the actual may be `none`. |
 | `def keys …` / `def node …` / `def eq …` | pick a non-reserved name (`ks`, `nd`) | `node keys vals has scan canon eq` are built-in (`[boru/reserved_word]`). |
 | `def N 1000` for a number | `def n 1000` | a capitalised `def` binds a singleton **type**, not the value (`iota N` is `[]`). |
 | `within`/`match` on a radix/tst/burst | pull `keys`/`entries`, rebuild a `TrieSet`/`TrieMap` | those queries exist on the standard trie only. |
@@ -115,11 +117,12 @@ print (back "POST" TrieMap.get)             # => 2
   in place.
 - **`each` is a MAP** — it must yield one value per element. For pure
   side-effects (no result), use `for`.
-- **Integer overflow is fail-loud** — 63-bit; an overflow raises
-  `integer_overflow` rather than wrapping. Intended.
+- **Integer overflow is fail-loud** — Integers are signed 64-bit
+  (`-2^63 … 2^63-1`); an overflow raises `integer_overflow` rather than
+  wrapping. Intended.
 - **One execution path.** `boru X` compiles to bytecode and runs on the VM
-  (after a static pre-flight check); `--compile` / `--force-compile` are
-  retired.
+  (after a static pre-flight check whose errors block the run);
+  `--compile` / `--force-compile` / `--no-compile` are retired.
 
 If the full repo is available, `AGENTS.md`, `api.json` (machine-readable
 signatures), and `docs/reference.md` have the complete guide;

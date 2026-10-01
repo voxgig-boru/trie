@@ -26,6 +26,17 @@ writing boru data structures and to the language authors.
 > handful of *new* papercuts found during this upgrade are at the bottom:
 > [Second upgrade review](#second-upgrade-review-958c379b-2026-06-11).
 
+> **Postscript 3 (migrated to boru main @ `64c5ab2`, 2026-10-01).** boru now
+> has one execution path (compile to bytecode, run on the VM — no interpreter
+> fallback, `--compile`/`--force-compile` retired); every suite compiles and
+> runs green, and `boru check` is clean on every suite and module. The breaking
+> changes, three commented workarounds (two compiler refusals and one
+> cross-module run-time defect), the open upstream defects (including
+> `Assert.equal` passing unequal values across types) and a TST empty-key bug
+> are in [Migration to boru main @ 64c5ab2](#migration-to-boru-main--64c5ab2-2026-10-01).
+> Sections between here and there that mention the interpreter,
+> `--force-compile` or a pinned commit are historical.
+
 The headline: boru is genuinely capable of expressing persistent, recursive
 data structures cleanly, and once the idioms are in hand the code reads
 well. Getting the idioms in hand, though, took a lot of empirical probing,
@@ -462,7 +473,7 @@ headline of the migration window is the **native map-iteration work**
 (`each`/`for-each`/`fold`/`filter` gained Map overloads, the `KeyVal` entry
 type landed, and `keys`/`vals` became core words), plus a batch of DX fixes
 the language team shipped in response to a *different* consumer's report
-(`voxgig-boru/decision/DX-REPORT.md`) — several of which also close
+(`voxgig-boru/decision/dx-report.md`) — several of which also close
 papercuts this library logged in round 2. Every status below is backed by
 this repo's ten suites running green at the pin, or a minimal probe.
 
@@ -689,3 +700,130 @@ surface as exercised by the unit suites (every `Set`/`Map` word, including
 just the trivial `make`/`add`/`has` probe. The remaining
 interpreter-only suites are blocked solely by the `fold`/`each`/`check-prop`
 emitter gap, not by anything in the library.
+
+---
+
+## Migration to boru main @ 64c5ab2 (2026-10-01)
+
+The previous verified build was boru `6185620` (2026-07-21); `64c5ab2` is
+~1,600 upstream commits later. The headline change is the **single execution
+path** (boru main, 2026-09-19): a program compiles to bytecode and runs on the
+VM, or fails with `[boru/compile_failed] … this is a compiler defect`. There
+is no interpreter fallback, `--compile` / `--force-compile` / `--no-compile`
+(and the `BORU_*COMPILE` env vars) are retired usage errors, and `boru X` runs
+the static check first and refuses on a check error. So "a suite runs" now
+means "a suite fully compiles" — and **all 11 suites and all 4 modules pass**:
+every suite compiles, runs and prints `all green`, and `boru check` reports
+0 errors on every suite and every module (gate: `test/divergence/run.sh`).
+
+### Breaking changes hit (language drift, migrated idiomatically)
+
+| Change | Upstream | What it meant here |
+|---|---|---|
+| Modifier `/r` → `/v` (ADR-011, 2026-08-19); `ref` → `valof` | ADR-011 | the eight `export` maps now read `make: map-make/v` etc. |
+| A bare name/member holding a function **calls** wherever it appears | ADR-011/016 | pass a word as data with `/v` (`TrieSet.has/v`); the library passes none |
+| Relative imports resolve against the **importing file's** directory (run and check) | 2026-08 | every suite imports `../<variant>.aql`; docs no longer say "working directory" |
+| Single execution path; retired flags | 2026-09-19 | the gate, CI, bench and every doc drop the interpreter / `--compile` / `--force-compile` lanes |
+| Capitalised `def N 1000` binds a singleton literal **type** (Stage 2 type flip, 2026-08-20) | Stage 2 | the bench's `iota N` was `[]` — it silently built an empty trie; now `def n` and `bench/run.sh` checks the size |
+| CLI is `boru` (`cmd/go` → `./boru`), native prefix `boru:` | rename | hook, CI and gate build `./boru`; no `aql` left outside historical sections |
+| `print` collects forward; postfix chains reorder | strict forward collection | the suites' `"---" print "fail count: " print …` summary printed out of order **and** left a stray `"---"` that the closing `0 … Assert.equal` compared against (it only passed because of the `Assert.equal` defect below). One terminated statement per line now, ending `Assert.equal 0 (Test.fail-count) end`; the how-to and reference examples are verb-first `print (…)` |
+| `Test.check-prop` returns a result Map | — | `trie_prop_test` binds each (`def _pN (…)`) so six Maps no longer print after `all green` |
+| `encode` output is pretty-printed JSON | `StructUtil.jsonify` | content unchanged; doc comments updated |
+| Receiver-first all-forward calls are rejected statically (`uncalled_function`) | check | docs say so (they used to say it "misbinds" silently) |
+
+`boru:test`'s **type-ID collision** (its record types are minted from a fresh
+type-ID counter, so a fn declared to return a library class fails
+`expected X, got X`) does **not** affect this library: every word returns a
+plain `Map`, `List`, `String`, `Integer`, `Boolean` or `none` — there is no
+`class`. The suites keep `import "boru:test"` first.
+
+### Workarounds applied (each commented in place; remove when fixed upstream)
+
+1. **`radix.aql` `common-len` — compile defect "dynamic-scope def `m` of
+   unpromoted computed value".** Inside a fn, `do {…}` at the head of a paren
+   that then reads a fn-local def loses the def. The fold init is now the
+   plain literal `{n: 0, ok: true}` (equal to `do {n: [0], ok: [true]}`).
+   In the module it is a `compile_failed`; standalone it surfaces as a run-time
+   `undefined word: m` while `boru check` reports 0 errors:
+   ```boru
+   def f fn [ [a:String] [Any] [
+     def m (a size)
+     def res (do {n: 0} m drop)   # expected {n: 0}; actual: undefined word: m
+     res
+   ] ]
+   print ("test" f)
+   ```
+2. **`tst.aql` `count-t` — compile defect "a gradual operand collected forward
+   … with no statement island to take it over (NUR357)".** The stack chain
+   `here l add m add h add` over three recursive-call defs refuses; the infix
+   chain `here add l add m add h` (STYLE-GUIDE §S2) compiles. NUR357 is a
+   retired number; the open refusal is listed in boru's
+   `design/COMPILABLE-SUBSET.md` ("Open refusals recorded 2026-09-29").
+   ```boru
+   def f fn [ [nd:Any] [Integer] [
+     if (nd eq none) [0] [
+       def l ((nd "lo" get) f)
+       def m ((nd "mid" get) f)
+       1 l add m add               # compile_failed (NUR357); `1 add l add m` compiles
+     ]
+   ] ]
+   print ({lo: none, mid: none} f)
+   ```
+3. **`tst.aql` / `burst.aql` `entries-with-prefix` — run-time defect: an
+   ungrouped `push` chain in an `each [var …]` body fails when the fn is called
+   through its export from another module.** `[] k push v push` raised
+   `signature_error: cannot call push` (the note even lists arguments that
+   match `push [Any List]`). The identical fn answers when called in-module —
+   directly, or from the defining module's own body — and `boru check` is
+   clean. Grouping the first call, `([] k push) v push`, avoids it, as does
+   `push/s`. No suite exercised `entries-with-prefix`, so the gate stayed green
+   until every word was re-run cross-variant; each unit suite now has an
+   `entries-with-prefix` block that fails against the unpatched modules.
+   ```boru
+   # lib.boru
+   def f fn [ [ks:List] [List] [ ks each [ var [[k] [] k push 7 push ] ] ] ]
+   export "L" { f: f/v }
+   # main.boru — expected [["a", 7], ["b", 7]]; actual signature_error at `push`
+   import "./lib.boru"
+   print (L.f ["a" "b"])
+   ```
+
+### Open upstream defects (found or confirmed in this migration)
+
+- **`Assert.equal` passes unequal values across types.** A zero-valued
+  `""` / `0` / `false` on either side matches `none` or any value of another
+  scalar type (`Assert.equal "" none`, `Assert.equal 0 none`,
+  `Assert.equal false 0`, `Assert.equal 0 []` all pass; `Assert.equal 1 "1"`
+  and `Assert.equal "x" none` fail correctly). `assertEqualHandler`
+  (`lang/go/modules/test.go`) calls `core.ValuesEqual`, whose contract is "two
+  values with the same type": it switches on the first value's type and
+  coerces the second, ignoring the coercion error. `eq` / `deq` are right.
+  Impact here: an `Assert.equal` whose actual has a declared `Any` return
+  (`get`, `longest-prefix`) cannot tell `none` from `""`/`0`/`false`. Every
+  existing such assertion was re-checked type-strictly with `eq` (all hold),
+  and the new empty-key tests compare with `eq`. Not yet in boru's NUR.md.
+  ```boru
+  import "boru:test"
+  Test.test "A" [ Assert.equal "" none ]     # passes — should fail
+  Test.test "E" [ Assert.equal 0 none ]      # passes — should fail
+  Test.test "J" [ Assert.equal 1 "1" ]       # fails, correctly
+  print (`fail count: ${(Test.fail-count)}`) # 1, expected 3
+  ```
+- **Cross-module `push` chain in a loop body** (workaround 3) — a run-time
+  answer bug; not yet in NUR.md.
+- **The two compile refusals** behind workarounds 1 and 2.
+- **"twin regime: a bind transition has no stream placement"** — a `var`
+  inside an `each` body nested in another `each` body refuses to compile
+  (`print ([1 2] each [ ([3 4] each [ var [[x] x ] ]) ])`). Not hit by the
+  library or suites (only by a scratch cross-variant script); lifting the
+  inner loop into a fn compiles. Same message as the NUR330 family in
+  `design/COMPILABLE-SUBSET.md`.
+
+### A library bug found by the re-verification (not a boru change)
+
+With the empty key `""` stored, `TstSet`/`TstMap.longest-prefix` returned
+`none` for a query whose path misses the `""` node (it sits in the root-level
+BST), where the other three variants return `""`. The TST longest-prefix words
+now seed their best match with `""` when it is stored, and every unit suite
+asserts the empty-key case. The property suites generate keys of length ≥ 1,
+which is why their cross-checks never saw it.

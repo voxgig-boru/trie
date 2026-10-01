@@ -220,6 +220,17 @@ def fixture
 ] "set-match" Test.test end
 
 
+# --- within / match on the map namespace (they return keys) ----------
+
+[
+  def t (fixture)
+  # within 1 of "cat": cat(0), car(1) — NOT card(2), NOT dog
+  ["car" "cat"]        (t "cat" 1 TrieMap.within) Assert.equal end
+  ["car" "cat"]        (t "ca?"   TrieMap.match) Assert.equal end
+  ["car" "card" "cat"] (t "ca*"   TrieMap.match) Assert.equal end
+] "map-within-match" Test.test end
+
+
 # --- construction from data (round-trips keys / entries) ------------
 
 [

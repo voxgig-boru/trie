@@ -2,7 +2,7 @@
   "name": "trie",
   "version": "0.2.3",
   "boru_ref": "main",
-  "verified_against": "boru main @ 64c5ab2 (2026-09-30)",
+  "verified_against": "boru main @ 64c5ab2 (2026-09-30; every example and word re-executed 2026-10-01)",
   "description": "Prefix-tree (trie) utilities for boru: four variants, each as a Set and a Map.",
   "conventions": {
     "import": "forward form, no terminator: import \"./trie.aql\"",
@@ -100,7 +100,8 @@
           "t:trie",
           "key:String"
         ],
-        "returns": "String | none"
+        "returns": "String | none",
+        "note": "none when no stored key prefixes `key`; a stored empty key \"\" prefixes every query"
       },
       "keys": {
         "call": "t Set.keys end",
@@ -126,9 +127,9 @@
         "note": "structural depth; per-variant, not comparable across variants"
       },
       "from-keys": {
-        "call": "keys Set.from-keys end",
+        "call": "ks Set.from-keys end",
         "args": [
-          "keys:List<String>"
+          "ks:List<String>"
         ],
         "returns": "trie",
         "note": "inverse of keys"
@@ -139,7 +140,7 @@
           "t:trie"
         ],
         "returns": "String",
-        "note": "JSON snapshot (StructUtil.jsonify of {kind, size, keys})"
+        "note": "JSON snapshot, pretty-printed (StructUtil.jsonify of {kind, size, keys})"
       },
       "decode": {
         "call": "s Set.decode end",
@@ -236,7 +237,8 @@
           "t:trie",
           "key:String"
         ],
-        "returns": "String | none"
+        "returns": "String | none",
+        "note": "none when no stored key prefixes `key`; a stored empty key \"\" prefixes every query"
       },
       "keys": {
         "call": "t Map.keys end",
@@ -291,7 +293,7 @@
           "t:trie"
         ],
         "returns": "String",
-        "note": "JSON snapshot (StructUtil.jsonify of {kind, size, entries}); a stored none serialises as null and decodes back to none"
+        "note": "JSON snapshot, pretty-printed (StructUtil.jsonify of {kind, size, entries}); a stored none serialises as null and decodes back to none"
       },
       "decode": {
         "call": "s Map.decode end",
