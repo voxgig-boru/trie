@@ -108,6 +108,18 @@ def fixture
   none   (t "zebra"    TrieMap.longest-prefix) Assert.equal end
 ] "map-longest-prefix" Test.test end
 
+# A stored empty key "" prefixes every query, so it is the answer when no
+# longer key matches (every variant agrees; the TST once returned `none`).
+# Compared with `eq`, not `"" (x) Assert.equal`: on boru main @ 64c5ab2
+# Assert.equal passes a zero-valued String/Integer/Boolean against `none`
+# or any other type (see DX-REPORT.md), so it could not catch `none` here.
+[
+  def t2 ((fixture) "" 0 TrieMap.set)
+  true ((t2 "zebra" TrieMap.longest-prefix) "" eq) Assert.equal end
+  true ((t2 "cardiff" TrieMap.longest-prefix) "card" eq) Assert.equal end
+  true ((t2 "" TrieMap.longest-prefix) "" eq) Assert.equal end
+] "map-longest-prefix-empty-key" Test.test end
+
 
 # --- TrieMap: delete prunes only the target -------------------------
 

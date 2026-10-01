@@ -308,7 +308,15 @@ def map-entries-with-prefix fn [
   ]
 ]
 
-def map-longest-prefix fn [ [key:String t:Any] [Any] [ none "" key t longest-t ] ]
+# The walk only visits nodes on `key`'s path, so a stored empty key ("" sits
+# in the root-level BST, off that path) seeds `best` up front — as in the
+# other variants, "" is then the answer when no longer key prefixes `key`.
+def map-longest-prefix fn [
+  [key:String t:Any] [Any] [
+    def best0 (if (t "" map-has) [""] [none])
+    best0 "" key t longest-t
+  ]
+]
 
 # Rebuild a map from a list of [key, value] pairs (inverse of `entries`).
 def map-from-entries fn [
@@ -370,7 +378,15 @@ def set-with-prefix fn [
   ]
 ]
 
-def set-longest-prefix fn [ [key:String t:Any] [Any] [ none "" key t longest-t ] ]
+# The walk only visits nodes on `key`'s path, so a stored empty key ("" sits
+# in the root-level BST, off that path) seeds `best` up front — as in the
+# other variants, "" is then the answer when no longer key prefixes `key`.
+def set-longest-prefix fn [
+  [key:String t:Any] [Any] [
+    def best0 (if (t "" set-has) [""] [none])
+    best0 "" key t longest-t
+  ]
+]
 
 # Rebuild a set from a list of keys (inverse of `keys`).
 def set-from-keys fn [
