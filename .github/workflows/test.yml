@@ -1,10 +1,11 @@
 name: tests
 
-# The trie utilities are written in boru, so CI builds the `boru` interpreter
-# from source before running anything. boru has no tagged release yet and has
-# shipped breaking changes between commits, so we pin BORU_REF to the exact
-# commit this library is verified against. Bump it (and re-run the suites
-# locally) when adopting a newer aql.
+# The trie utilities are written in boru, so CI builds `boru` from source
+# before running anything. boru has no tagged release yet, and this library
+# tracks boru-lang/boru `main` (no fixed pin): every run resolves main HEAD,
+# builds it (cached by SHA), and gates on it — so an upstream break shows up
+# here the day it lands. Last verified by hand against boru main @ 64c5ab2
+# (see BORU-MAIN-VERIFICATION.md).
 on:
   push:
     branches: [main]
@@ -46,9 +47,9 @@ jobs:
           ref: ${{ steps.boruref.outputs.sha }}
           path: boru-src
 
-      # The documented `go install …/cmd/go/aql@latest` cannot work while
-      # cmd/go/go.mod carries replace directives, so we build from the clone
-      # with -mod=mod instead.
+      # `go install …/cmd/go/boru@latest` cannot work while cmd/go/go.mod
+      # carries replace directives, so we build from the checkout with
+      # -mod=mod instead. The CLI's main package is cmd/go/boru.
       - name: Build boru
         if: steps.cache-boru.outputs.cache-hit != 'true'
         run: |
@@ -64,76 +65,28 @@ jobs:
       - name: Report boru version
         run: boru -version
 
-      # Each suite ends with `0 test.fail-count end assert.equal`, so a
-      # failure makes boru exit non-zero and fails the step.
-      #
-      # INTERPRETER IS A HARD GATE for every suite — the supported execution
-      # path, and always green.
-      - name: Unit tests — interpreter (HARD GATE)
-        run: |
-          for f in trie radix tst burst; do
-            echo "::group::boru test/${f}_unit_test.aql"
-            boru "test/${f}_unit_test.aql"
-            echo "::endgroup::"
-          done
-      - name: Unit spec — standard trie (interpreter)
-        run: boru test/trie_unit_spec.aql
+      # ONE execution path: since boru main 2026-09-19 a program compiles to
+      # bytecode and runs on the VM, or fails with `[boru/compile_failed]`.
+      # There is no interpreter fallback, and the old lanes this job ran — the
+      # interpreter gate, `--compile` parity and the advisory `--force-compile`
+      # lane — are retired upstream (the flags are usage errors now). So the
+      # gate is: every suite exits 0 compiled (each assertion-bearing suite
+      # ends asserting `Test.fail-count` is 0 and prints `all green`), and
+      # `boru check` reports 0 errors on every suite AND every module. The
+      # script is the single definition of that gate, shared with local runs;
+      # see test/divergence/README.md.
+      - name: Suites (compiled) + static check — HARD GATE
+        run: BORU="$HOME/.local/bin/boru" test/divergence/run.sh
 
-      - name: Property tests — standard trie (spec)
-        run: boru test/trie_prop_spec.aql
-      - name: Property tests — standard trie (direct)
-        run: boru test/trie_prop_test.aql
-      - name: Property tests — radix tree
-        run: boru test/radix_prop_spec.aql
-      - name: Property tests — ternary search tree
-        run: boru test/tst_prop_spec.aql
-      - name: Property tests — burst trie
-        run: boru test/burst_prop_spec.aql
+      # The perf workload must still do real work (it once silently built an
+      # empty trie when a capitalised `def N` became a type) — a quick size
+      # check, not a timing gate.
+      - name: Bench smoke (N=500)
+        run: SIZES=500 BORU="$HOME/.local/bin/boru" bench/run.sh | tee /dev/stderr | grep -q ' ok'
 
-      - name: Smoke demo
-        run: boru test/trie_smoke_test.aql
-
-      # Static check — HARD GATE. `boru check` exits non-zero on any
-      # error-level diagnostic. The upstream checker-precision work (gradual
-      # `Any` carriers, `/r` reference-export use-tracing, the `do{}`-param and
-      # dynamic-`set` fixes) landed, so every suite AND every module now checks
-      # 0 errors — what used to be ~150–300 false positives per module. Gating
-      # here guards against a regression on either side. (`unused_def` and
-      # similar live at warning level and do not fail the step.)
-      # Verified clean on the pinned ref; see BORU-MAIN-VERIFICATION.md §8 and
-      # upstream design/CLIENT-VERIFICATION-MAIN-2026-06-24.md.
-      - name: Static check — suites + modules (HARD GATE, 0 errors)
-        run: |
-          for f in test/*.aql trie.aql radix.aql tst.aql burst.aql; do
-            echo "::group::boru check $f"
-            boru check "$f"
-            echo "::endgroup::"
-          done
-
-      # Bytecode compiler (`--force-compile`, the strict path that refuses
-      # rather than falling back) — ADVISORY, and steadily improving upstream.
-      # As of the pinned ref all four `*_prop_spec` suites compile (the `each`
-      # and dynamic-help `check diagnostics` refusals are gone); the remaining
-      # frontier is `fold`/`each`/`test-test` code-bodies, `loop results as fn
-      # args` (Stage 3), and one `unknown provenance` case — tracked, deferred
-      # upstream emitter work (design/COMPILABLE-SUBSET.md; proposals/aql-full-
-      # compilation.md). `--compile` (silent interpreter fallback) matches the
-      # interpreter on every suite, so this is a coverage gap, not a
-      # correctness bug. Promote to a gate once the emitter closes those words.
-      - name: Bytecode compiler — suites (advisory)
-        continue-on-error: true
-        run: |
-          for f in test/*.aql; do
-            echo "::group::boru --force-compile $f"
-            boru --force-compile "$f" || echo "::warning::--force-compile refused for $f (deferred upstream)"
-            echo "::endgroup::"
-          done
-
-  # Lightweight guard for the agent-skill packaging and the pinned-ref single
-  # source of truth (no boru needed). The plugin must bundle its own copy of the
-  # skill — plugins can't point at an external .claude/skills dir — so two
-  # copies exist and can drift; and the boru commit is pinned in several files
-  # that must agree.
+  # Lightweight guard for the agent-skill packaging (no boru needed). The
+  # plugin must bundle its own copy of the skill — plugins can't point at an
+  # external .claude/skills dir — so two copies exist and can drift.
   consistency:
     runs-on: ubuntu-latest
     steps:
