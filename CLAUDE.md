@@ -9,39 +9,43 @@ a Set and a Map over a shared engine.
 See @AGENTS.md for how to call the trie API correctly from boru — the
 forward-dispatch calling convention, the four variants, the persistent/immutable
 rebind rule, copy-paste idioms, and the common mistakes to avoid. Every example
-there is verified against the pinned `boru` build.
+there is verified against boru main @ `64c5ab2`.
 
 ## Working on this repository
 
 - A SessionStart hook (`.claude/settings.json` →
-  `.claude/hooks/session-start.sh`) builds `boru` from the pinned commit in
-  remote sessions, so a fresh session can run the suites. Locally, build it
-  once from source (there is no tagged release and `go install …/aql@latest`
-  is blocked by replace directives) — see
-  [docs/how-to.md](docs/how-to.md#install-and-run-aql).
+  `.claude/hooks/session-start.sh`) builds `boru` from boru-lang/boru `main` in
+  remote sessions (codeload tarball, `git clone` fallback; `cmd/go` →
+  `./boru`), so a fresh session can run the suites. Locally, build it once from
+  source (there is no tagged release and `go install …/boru@latest` is blocked
+  by replace directives) — see
+  [docs/how-to.md](docs/how-to.md#install-and-run-boru).
 - Tests live in `test/`, named `<subject>_<unit|prop>_<test|spec>.aql` plus a
   `trie_smoke_test.aql`: `_test` = imperative (`Test.test`/`Test.check-prop`),
   `_spec` = declarative spec; `unit` = example-based, `prop` = property-based.
   The standard trie ships all four surfaces as the reference; each variant ships
   at least the imperative-unit + declarative-property pair. Each
   assertion-bearing suite ends by asserting `Test.fail-count` is `0` and prints
-  `all green`.
-- The pin tracks boru **`main`** (latest), not a "known-good" commit — we are
-  on an iterative-improvement track with upstream, so always re-pin to the
-  newest `main` and retest. Record each retest in `boru-MAIN-VERIFICATION.md`.
-- CI gates two ways, both **hard**: the **interpreter** (every suite ends by
-  asserting `Test.fail-count` is 0), and **`boru check`** over every suite *and*
-  every module (all now 0 errors — the upstream checker-precision work landed,
-  retiring the ~150–300 false positives per module that `boru-CHECK-REPORT.md`
-  documented). Keep both green. `boru --force-compile` (the strict bytecode
-  path) is **advisory** — it still refuses a handful of code-body words
-  (`each`/`do` map bodies, the test-framework `test-test`/`test-check-prop`),
-  deferred upstream emitter work; `--compile` matches the interpreter on every
-  suite. Promote it to a gate once the emitter closes those words. The latest
-  retest and the upstream verification it tracks are in
-  `boru-MAIN-VERIFICATION.md` (§8) — note that doc and `boru-CHECK-REPORT.md`'s
-  "false positives are unfixable" thesis are now **superseded**: upstream fixed
-  them.
-- Known boru-runtime gotchas observed with the pinned build are in
-  `dx-report.md`. The pinned boru commit is single-sourced in `ci/test.yml`
-  (`BORU_REF`); a CI job fails if the hook or `api.json` drift from it.
+  `all green`. Suites import the modules as `../<variant>.aql` — relative
+  imports resolve against the importing file's own directory.
+- The library tracks boru **`main`** (latest), not a "known-good" commit — we
+  are on an iterative-improvement track with upstream, so always retest on the
+  newest `main`. Record each retest in `BORU-MAIN-VERIFICATION.md` (latest:
+  §9, boru main @ `64c5ab2`, 2026-10-01).
+- **One execution path.** boru compiles every program to bytecode and runs it
+  on the VM, or fails with `[boru/compile_failed] … compiler defect`; there is
+  no interpreter fallback, and `--compile` / `--force-compile` / `--no-compile`
+  are retired (usage errors). So "a suite runs" means "a suite fully compiles".
+  The gate is `test/divergence/run.sh` (CI calls it): every suite exits 0
+  under `boru <suite>` and prints `all green`, and `boru check` reports 0
+  errors on every suite **and** every module. All 11 suites and 4 modules pass
+  it on `64c5ab2`. `boru X` runs the static check first; never use `-no-check`
+  to get green.
+- Two library spots carry workarounds for open boru compiler defects (each
+  commented in place, minimal repros in `DX-REPORT.md`'s migration section):
+  `radix.aql` `common-len` and `tst.aql` `count-t`. Remove them when upstream
+  fixes land.
+- Known boru-runtime gotchas are in `DX-REPORT.md`; the perf workload and its
+  numbers are `bench/` and `PERF-BASELINE.md`. `BORU-CHECK-REPORT.md` is a
+  historical record (its "false positives are unfixable" thesis was superseded:
+  upstream fixed them).

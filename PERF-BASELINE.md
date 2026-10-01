@@ -1,7 +1,7 @@
 # Performance baseline — `voxgig-boru/trie`
 
 **Date:** 2026-07-11
-**boru:** `main` (built from source; see `boru-MAIN-VERIFICATION.md` for the exact
+**boru:** `main` (built from source; see `BORU-MAIN-VERIFICATION.md` for the exact
 commit and build method)
 **Harness:** `bench/trie_bench.aql` + `bench/run.sh` (reproducible; no RNG)
 
@@ -27,7 +27,7 @@ treat them as *ratios and orders of magnitude*, not absolute constants; re-run
 
 Run with `SIZES="500 1000 2000" bench/run.sh`. The compiler (`boru --compile`)
 **soundly falls back to the interpreter for the recursive trie module fns that
-still refuse** (see `boru-MAIN-VERIFICATION.md` §compile), yet the compiled
+still refuse** (see `BORU-MAIN-VERIFICATION.md` §compile), yet the compiled
 top-level driver loops (the build `fold` and the membership/prefix `each`
 sweeps) still deliver a solid speedup:
 
@@ -43,7 +43,7 @@ Scaling is roughly linear in `N` (slightly superlinear because `with-prefix`
 collects a growing key set). The **~3× compiled speedup comes entirely from the
 driver loops**; closing the remaining `--force-compile` refusals in the
 recursive module fns (the `body result of unknown provenance` / dynamic-receiver
-dispatch frontier catalogued in `boru-MAIN-VERIFICATION.md`) is the path to
+dispatch frontier catalogued in `BORU-MAIN-VERIFICATION.md`) is the path to
 compiling the trie walks themselves and widening this margin.
 
 ## Per-suite interpreter runtimes (latest `main`)

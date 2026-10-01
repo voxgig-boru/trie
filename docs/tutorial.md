@@ -4,7 +4,7 @@ This is a hands-on lesson. By the end you will have built a small boru
 script that stores a dictionary of words, autocompletes a prefix, and
 looks up a value — the core of what a trie is good for. You need no prior
 knowledge of tries, just a working `boru` binary (see
-[How-to → Install and run](how-to.md#install-and-run-aql)) and this
+[How-to → Install and run](how-to.md#install-and-run-boru)) and this
 repository checked out.
 
 Type the script into a file as we grow it, and run it after each step.
@@ -22,18 +22,18 @@ file `words.aql` next to `trie.aql`:
 ```boru
 import "./trie.aql"
 
-# boru prints a program's first line last; one blank line up front keeps
-# the rest of the output in source order.
-"" print
-
 def t0 (TrieSet.make)
 def t1 (t0 "cat"  TrieSet.add)
 def t2 (t1 "car"  TrieSet.add)
 def t3 (t2 "card" TrieSet.add)
 def t4 (t3 "dog"  TrieSet.add)
 
-`words: ${(t4 TrieSet.keys)}` print
+print `words: ${(t4 TrieSet.keys)}`
 ```
+
+(`print` comes first and takes the value written after it — one `print (…)`
+per line keeps the output in source order. `import "./trie.aql"` resolves
+against the directory `words.aql` lives in, wherever you run `boru` from.)
 
 Run it:
 
@@ -54,9 +54,9 @@ trie stores keys in order.
 `TrieSet.has` answers membership exactly — no false positives:
 
 ```boru
-`cat?  ${(t4 "cat" TrieSet.has)}` print
-`ca?   ${(t4 "ca"  TrieSet.has)}` print
-`emu?  ${(t4 "emu" TrieSet.has)}` print
+print `cat?  ${(t4 "cat" TrieSet.has)}`
+print `ca?   ${(t4 "ca"  TrieSet.has)}`
+print `emu?  ${(t4 "emu" TrieSet.has)}`
 ```
 
 ```console
@@ -77,9 +77,9 @@ This is the move tries are made for. `with-prefix` returns every key that
 starts with what the user has typed so far:
 
 ```boru
-`complete "ca": ${(t4 "ca"  TrieSet.with-prefix)}` print
-`complete "d":  ${(t4 "d"   TrieSet.with-prefix)}` print
-`complete "z":  ${(t4 "z"   TrieSet.with-prefix)}` print
+print `complete "ca": ${(t4 "ca"  TrieSet.with-prefix)}`
+print `complete "d":  ${(t4 "d"   TrieSet.with-prefix)}`
+print `complete "z":  ${(t4 "z"   TrieSet.with-prefix)}`
 ```
 
 ```console
@@ -100,15 +100,15 @@ Sometimes you have a long string and want the longest stored key that
 `"car"` is already there; ask what prefixes `"cartoon"`:
 
 ```boru
-`longest of "cartoon": ${(t4 "cartoon" TrieSet.longest-prefix)}` print
-`longest of "cat":     ${(t4 "cat"     TrieSet.longest-prefix)}` print
-`longest of "emu":     ${(t4 "emu"     TrieSet.longest-prefix)}` print
+print `longest of "cartoon": ${(t4 "cartoon" TrieSet.longest-prefix)}`
+print `longest of "cat":     ${(t4 "cat"     TrieSet.longest-prefix)}`
+print `longest of "emu":     ${(t4 "emu"     TrieSet.longest-prefix)}`
 ```
 
 ```console
 longest of "cartoon": car
 longest of "cat":     cat
-longest of "emu":     None
+longest of "emu":     none
 ```
 
 `"car"` is the longest member that begins `"cartoon"` (`"card"` does not,
@@ -125,22 +125,21 @@ its length. Create `lengths.aql`:
 
 ```boru
 import "./trie.aql"
-"" print
 
 def m0 (TrieMap.make)
 def m1 (m0 "cat"  3 TrieMap.set)
 def m2 (m1 "card" 4 TrieMap.set)
 
-`get cat:     ${(m2 "cat"  TrieMap.get)}` print
-`get card:    ${(m2 "card" TrieMap.get)}` print
-`get missing: ${(m2 "emu"  TrieMap.get)}` print
-`entries:     ${(m2 TrieMap.entries)}` print
+print `get cat:     ${(m2 "cat"  TrieMap.get)}`
+print `get card:    ${(m2 "card" TrieMap.get)}`
+print `get missing: ${(m2 "emu"  TrieMap.get)}`
+print `entries:     ${(m2 TrieMap.entries)}`
 ```
 
 ```console
 get cat:     3
 get card:    4
-get missing: None
+get missing: none
 entries:     [['card' 4] ['cat' 3]]
 ```
 
@@ -159,9 +158,8 @@ tree:
 
 ```boru
 import "./radix.aql"       # was ./trie.aql
-"" print
 def t ((((( RadixSet.make) "cat" RadixSet.add) "car" RadixSet.add) "card" RadixSet.add) "dog" RadixSet.add)
-`complete "ca": ${(t "ca" RadixSet.with-prefix)}` print
+print `complete "ca": ${(t "ca" RadixSet.with-prefix)}`
 ```
 
 ```console

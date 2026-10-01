@@ -5,8 +5,8 @@ Upstream **boru-language** design proposals (RFCs) discovered while building
 API. They live here so the idea is captured next to the code that motivated it.
 
 - One proposal per file, kebab-case (`lazy-arg-resolution.md`).
-- Link each one from the relevant gotcha in [`dx-report.md`](../dx-report.md),
+- Link each one from the relevant gotcha in [`DX-REPORT.md`](../DX-REPORT.md),
   and record its provenance (the line of work that surfaced it) at the top.
 - These are **project-specific**: they are *not* carried into projects derived
   from the template. (Smaller suggestions can also just live inline in
-  `dx-report.md` under “Suggestions, in priority order”.)
+  `DX-REPORT.md` under “Suggestions, in priority order”.)

@@ -1,7 +1,7 @@
 # Close the `--force-compile` coverage gap for client libraries
 
 > **Provenance.** Surfaced by the `boru`-main verification track for this library
-> (`boru-MAIN-VERIFICATION.md`, §6–§8). As of `boru main @ 407fedad` the
+> (`BORU-MAIN-VERIFICATION.md`, §6–§8). As of `boru main @ 407fedad` the
 > interpreter and `boru check` are fully green (0 errors) on all 11 suites and
 > all 4 modules; the **strict bytecode path (`--force-compile`)** is the only
 > remaining non-green path. This is a prompt/brief to direct work **in the

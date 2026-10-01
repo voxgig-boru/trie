@@ -100,7 +100,7 @@ jobs:
       # 0 errors — what used to be ~150–300 false positives per module. Gating
       # here guards against a regression on either side. (`unused_def` and
       # similar live at warning level and do not fail the step.)
-      # Verified clean on the pinned ref; see boru-MAIN-VERIFICATION.md §8 and
+      # Verified clean on the pinned ref; see BORU-MAIN-VERIFICATION.md §8 and
       # upstream design/CLIENT-VERIFICATION-MAIN-2026-06-24.md.
       - name: Static check — suites + modules (HARD GATE, 0 errors)
         run: |

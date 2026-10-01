@@ -5,7 +5,7 @@ name: tests
 # tracks boru-lang/boru `main` (no fixed pin): every run resolves main HEAD,
 # builds it (cached by SHA), and gates on it — so an upstream break shows up
 # here the day it lands. Last verified by hand against boru main @ 64c5ab2
-# (see boru-MAIN-VERIFICATION.md).
+# (see BORU-MAIN-VERIFICATION.md).
 on:
   push:
     branches: [main]

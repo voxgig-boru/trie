@@ -314,7 +314,7 @@ can't trace those reference exports or the dynamic dispatch, and reports false
 `unused_def`/`no_signature` diagnostics on code the suites prove correct. The
 runnable suites are the real gate. The full per-module catalogue of what the
 checker reports and why each report is a false positive lives in
-[`boru-CHECK-REPORT.md`](boru-CHECK-REPORT.md) — project-specific evidence to
+[`BORU-CHECK-REPORT.md`](BORU-CHECK-REPORT.md) — project-specific evidence to
 re-run on each boru bump, not template-core.
 
 ---
@@ -462,7 +462,7 @@ headline of the migration window is the **native map-iteration work**
 (`each`/`for-each`/`fold`/`filter` gained Map overloads, the `KeyVal` entry
 type landed, and `keys`/`vals` became core words), plus a batch of DX fixes
 the language team shipped in response to a *different* consumer's report
-(`voxgig-boru/decision/dx-report.md`) — several of which also close
+(`voxgig-boru/decision/DX-REPORT.md`) — several of which also close
 papercuts this library logged in round 2. Every status below is backed by
 this repo's ten suites running green at the pin, or a minimal probe.
 
@@ -609,7 +609,7 @@ The library refuses in two layers, in this order:
    check diagnostics`) before the emitter even runs (warnings do not
    block it). Checking a *library module* directly trips ~900 documented
    `check` **false positives** (generic stack-dispatch + reference-exported
-   namespaces — see `boru-CHECK-REPORT.md`), so compiling code that pulls a
+   namespaces — see `BORU-CHECK-REPORT.md`), so compiling code that pulls a
    whole module in at that granularity is refused here regardless of what
    the emitter could do. (A *test file* that merely imports the library is
    far cleaner — `boru check test/<x>_unit_test.aql` reports 0 errors, only

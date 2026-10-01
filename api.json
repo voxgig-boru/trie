@@ -1,21 +1,25 @@
 {
   "name": "trie",
   "version": "0.2.3",
-  "aql_ref": "main",
-  "description": "Prefix-tree (trie) utilities for AQL: four variants, each as a Set and a Map.",
+  "boru_ref": "main",
+  "verified_against": "boru main @ 64c5ab2 (2026-09-30)",
+  "description": "Prefix-tree (trie) utilities for boru: four variants, each as a Set and a Map.",
   "conventions": {
     "import": "forward form, no terminator: import \"./trie.aql\"",
-    "call": "trie words are receiver-first (t key value Map.set) so results pipe; forward arguments have precedence and a call resolves at the next function word or paren, so a terminator is usually unnecessary",
+    "call": "every Set/Map word takes the receiver (the trie) LAST: forward `Map.set value key t` (canonical), pipe `t Map.set value key`, or all-stack `t key value Map.set` all bind; only receiver-first-all-forward (`Map.set t key value`) misbinds (rejected as uncalled_function). Forward arguments have precedence and a call resolves at the next function word or paren. The `call` strings in word_specs use the all-stack form.",
     "disambiguation": "only when a bare type-compatible literal immediately follows a stack-form call: use parens, a trailing `end`, or the `/s` modifier (force stack) e.g. `5 5 cmp/s 9`",
     "immutable": "add/set/delete return a NEW trie; rebind the result",
     "outputs_sorted": "keys, values, entries, with-prefix, keys-with-prefix, entries-with-prefix return key-sorted output",
     "absent": "get returns none, has returns false for absent keys (never an error)",
-    "import_resolution": "relative to the working directory, not the importing file",
+    "import_resolution": "a relative import resolves against the importing file's own directory (not the working directory)",
     "external_deps": [
-      "boru:struct-util (standard module shipped with the interpreter)"
+      "boru:struct-util (standard module shipped with boru)"
     ],
     "codec": "decode is the inverse of encode (raises a catchable error on a payload of the wrong kind); data-level round-trips via keys+from-keys or entries+from-entries also work",
-    "call_placeholder": "in word_specs, `Set`/`Map` stands for the concrete namespace name (e.g. RadixSet.add, TstMap.get)"
+    "call_placeholder": "in word_specs, `Set`/`Map` stands for the concrete namespace name (e.g. RadixSet.add, TstMap.get)",
+    "print": "print collects its argument forward: write `print (value)`, one value per statement",
+    "function_values": "a bare name holding a function calls wherever it appears; pass one as data with the `/v` modifier (e.g. `TrieSet.has/v`)",
+    "execution": "boru has one execution path: a program compiles to bytecode and runs on the VM (no interpreter fallback; --compile/--force-compile/--no-compile are retired)"
   },
   "modules": {
     "trie.aql": {

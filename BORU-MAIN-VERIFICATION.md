@@ -117,7 +117,7 @@ imported library:
 | `tst_unit_test`   | 70 `no_signature` |
 | `burst_unit_test` | 28 `no_signature` |
 
-Every one is a **documented false positive** (see `boru-CHECK-REPORT.md`):
+Every one is a **documented false positive** (see `BORU-CHECK-REPORT.md`):
 
 - `no_signature` on `Any`-typed dynamic dispatch — the diagnostics point at
   library internals (`get`, `find-kid`, `trie-insert`, `mk-node`,
@@ -169,7 +169,7 @@ library is currently **uncheckable and uncompilable for any downstream
 consumer** on `main`. That is a far larger blast radius than before.
 
 This sharpens — does not change — the standing wishlist from
-`boru-CHECK-REPORT.md` (items 1–4): until `boru check` can distinguish this
+`BORU-CHECK-REPORT.md` (items 1–4): until `boru check` can distinguish this
 library's deliberate dynamic dispatch from a real error
 (trace `/r` reference-exports, unify `Any` with concrete params, resolve
 `do{}` quotation params, declare `Returns` on core words), the transitive
@@ -245,7 +245,7 @@ check gate for any program that imports the library.
 **Conclusion holds:** keep the pin at `c44d994f`. Adopting `main` still waits
 on the transitive-check change no longer surfacing imported-module
 diagnostics as gating errors, or on the library's documented false-positive
-classes being resolved upstream (`boru-CHECK-REPORT.md` wishlist 1–4).
+classes being resolved upstream (`BORU-CHECK-REPORT.md` wishlist 1–4).
 
 ### Access note
 
@@ -406,7 +406,7 @@ Re-pinned to **`407fedad`** (latest `main`, a few commits past the doc's
 | `trie`/`radix`/`tst`/`burst`.aql (module-direct) | — | **0 errors** | — |
 
 That is down from the 150–300 errors per module the original
-`boru-CHECK-REPORT.md` catalogued — its "these false positives are unfixable
+`BORU-CHECK-REPORT.md` catalogued — its "these false positives are unfixable
 without upstream items 1–4" thesis is now **superseded**: items 1–4 all
 landed.
 
@@ -473,7 +473,7 @@ but the Go proxy is reachable.
 ### Breaking change — strict forward-collection is now an error
 
 `main` promoted the long-known chained-print / forward-collection foot-gun
-(`dx-report.md`: "`5 print 6 print` prints `6` then `5`") from silent
+(`DX-REPORT.md`: "`5 print 6 print` prints `6` then `5`") from silent
 misordering to a hard `signature_error`:
 
 ```
@@ -487,7 +487,7 @@ It fired at **both check and interpret** on the one place a bare `print`
 immediately preceded a `def` barrier — `test/trie_prop_test.aql`'s summary
 (`"results:" print` / `def all-results …`). Blast radius: **1 of 11 suites**.
 Fix: `end`-terminate those prints (`"results:" print end`), the exact idiom
-`dx-report.md` already prescribes ("one `print end` per line"). This is a
+`DX-REPORT.md` already prescribes ("one `print end` per line"). This is a
 **good** change — it makes a silent reorder loud — but it is a breaking one
 for code that leaned on the tolerant behaviour.
 
