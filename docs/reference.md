@@ -28,8 +28,10 @@ import "./tst.aql"
 import "./burst.aql"
 ```
 
-A consuming script does **not** need to import anything else; each module
-pulls in its own dependencies.
+A relative import resolves against **the importing file's own directory**
+(a script in `test/` writes `import "../trie.aql"`). A consuming script does
+**not** need to import anything else; each module pulls in its own
+dependencies.
 
 ---
 
@@ -38,19 +40,25 @@ pulls in its own dependencies.
 Operations are forward-dispatched words: a word takes the tokens after it as
 arguments, stops at the next function word or a closing paren, and otherwise
 draws from the stack — so a terminator is usually unnecessary
-(`(t "x" TrieSet.add)` and `t "x" TrieSet.has print` both resolve). The one
+(`(t "x" TrieSet.add)` and `print (t "x" TrieSet.has)` both resolve). The one
 case that needs disambiguation is a bare, type-compatible literal immediately
 following a call with nothing between; resolve it with parens, a trailing
 `end`, or the `/s` modifier, which forces stack-arg resolution. This is general
-boru forward-precedence behaviour, not specific to this library.
+boru forward-precedence behaviour, not specific to this library. (`print`
+collects forward too: write `print (value)`, verb first, one per statement.)
 
-The receiver (the trie) is the **last** argument in every Set/Map word's
-signature, so two call shapes bind: **forward** `Map.set value key t`
-(arguments forward, receiver last) and **pipe/stack** `t key value Map.set`
-(the receiver flows in from the left — the form used in the Call rows below).
-Only receiver-first-forward (`Map.set t key value`) misbinds. Keys are
-Strings; values may be any type. The Call rows show a trailing `end` for
-clarity; it is optional in the common case above.
+A call fills its parameters in signature order — the forward arguments
+first, then the stack, top first. The receiver (the trie) is the **last**
+argument in every Set/Map word's signature, so three call shapes bind
+identically: **forward** `Map.set value key t` (arguments forward, receiver
+last — the canonical form), **pipe** `t Map.set value key` (the receiver
+flows in from the left), and **all-stack** `t key value Map.set` (the form
+used in the Call rows below). Only receiver-first, all-forward
+(`Map.set t key value`) misbinds — the trie lands in the value slot, no
+signature matches, and `boru check` (which every `boru X` run performs first)
+rejects it as `uncalled_function`. Keys are Strings; values may be any type.
+The Call rows show a trailing `end` for clarity; it is optional in the common
+case above.
 
 ### Immutability
 
@@ -139,7 +147,7 @@ about which variant wrote the snapshot; `from-keys` is not).
 
 | | |
 |--|--|
-| **Call** | `keys Set.from-keys end` |
+| **Call** | `ks Set.from-keys end` |
 | **Stack in** | a `List` of `String` keys |
 | **Returns** | a new set containing exactly those keys |
 
@@ -162,9 +170,9 @@ about which variant wrote the snapshot; `from-keys` is not).
 
 ### `Set.encode`
 
-A JSON snapshot string (via `StructUtil.jsonify`) carrying the kind, size,
-and sorted keys — `{"kind": "trieset", "size": …, "keys": […]}`. Feed it
-back to `decode` to rebuild the set.
+A JSON snapshot string (via `StructUtil.jsonify`, pretty-printed) carrying
+the kind, size, and sorted keys — `{"keys": […], "kind": "trieset", "size": …}`.
+Feed it back to `decode` to rebuild the set.
 
 | | |
 |--|--|
@@ -177,7 +185,8 @@ The inverse of `encode`: parse a snapshot string and rebuild the set.
 Each namespace accepts only its **own** kind (`TrieSet.decode` reads
 `"trieset"` payloads, `RadixSet.decode` reads `"radixset"`, …); any other
 kind **raises** a catchable error naming both kinds — catch it with
-`do […] error […]`. Map namespaces decode their `{kind, size, entries}`
+`do […] error [ var [[e] e.message ] ]` (dot access; `get` evaluates its key,
+so a bare `e get message` is an `undefined word`). Map namespaces decode their `{kind, size, entries}`
 payloads the same way. To move data *across* variants, use
 `keys`/`from-keys` (or `entries`/`from-entries`) instead.
 
@@ -194,7 +203,7 @@ def t2 (snapshot TrieSet.decode)     # (t TrieSet.keys) == (t2 TrieSet.keys)
 
 A stored `none` value (maps) serialises as JSON `null` and decodes back to
 `none` — it compares equal under `eq`/`deq`, though `Assert.equal` still
-distinguishes the hydrated value from a `none` literal.
+distinguishes the hydrated value from a `none` literal (assert it with `eq`).
 
 ---
 
@@ -286,7 +295,7 @@ subtree as soon as its whole row exceeds `k`.
 
 ```boru
 def t (((TrieSet.make) "cat" TrieSet.add) "car" TrieSet.add)
-(t "cat" 1 TrieSet.within) print   # => ["car", "cat"]
+print (t "cat" 1 TrieSet.within)   # => ["car", "cat"]
 ```
 
 ### `match` — wildcard search
@@ -302,8 +311,8 @@ a literal.
 | **Returns** | `List` of matching keys, sorted |
 
 ```boru
-(t "ca?" TrieSet.match) print   # => ["car", "cat"]
-(t "c*"  TrieSet.match) print   # => ["car", "cat"]
+print (t "ca?" TrieSet.match)   # => ["car", "cat"]
+print (t "c*"  TrieSet.match)   # => ["car", "cat"]
 ```
 
 ---
@@ -317,8 +326,9 @@ a literal.
 - **No false answers.** `has` is exact: there are no false positives or
   negatives (unlike a bloom filter).
 - **Equivalence.** For the same keys, all four variants expose the same
-  `keys`, `has`, `with-prefix`, and `longest-prefix` results. They differ
-  only in internal shape, memory, and `height`.
+  `keys`, `has`, `with-prefix`, `longest-prefix` (including a stored empty
+  key `""`, which prefixes every query), `entries` and `entries-with-prefix`
+  results. They differ only in internal shape, memory, and `height`.
 
 ## Errors at a glance
 
@@ -327,7 +337,8 @@ a literal.
 | `get`/`has` on an absent key | `none` / `false` (never an error) |
 | `delete` of an absent key | returns an equivalent trie (no-op) |
 | `decode` of another variant's (or a malformed) payload | raises a catchable error (`do […] error […]`) |
-| missing `end` after a call | dispatch error on the following word (add `end` or parens) |
+| receiver-first, all-forward call (`TrieSet.add t "x"`) | `boru check` error `uncalled_function` — the run is refused before it starts |
+| missing `end` after a call | a check/dispatch error on the following word (add `end` or parens) |
 
 ## Complexity (n keys, key length L, alphabet σ)
 

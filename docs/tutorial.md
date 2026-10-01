@@ -96,8 +96,8 @@ an empty list. That is a working autocomplete in one call.
 ## Step 4 — longest-prefix matching
 
 Sometimes you have a long string and want the longest stored key that
-*starts* it — the heart of routing tables and tokenizers. Add the word
-`"car"` is already there; ask what prefixes `"cartoon"`:
+*starts* it — the heart of routing tables and tokenizers. The word `"car"`
+is already there; ask what prefixes `"cartoon"`:
 
 ```boru
 print `longest of "cartoon": ${(t4 "cartoon" TrieSet.longest-prefix)}`
