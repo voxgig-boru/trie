@@ -31,7 +31,7 @@ there is verified against boru main @ `64c5ab2`.
 - The library tracks boru **`main`** (latest), not a "known-good" commit — we
   are on an iterative-improvement track with upstream, so always retest on the
   newest `main`. Record each retest in `BORU-MAIN-VERIFICATION.md` (latest:
-  §9, boru main @ `64c5ab2`, 2026-10-01).
+  §13, boru main @ `64c5ab2`, 2026-10-01).
 - **One execution path.** boru compiles every program to bytecode and runs it
   on the VM, or fails with `[boru/compile_failed] … compiler defect`; there is
   no interpreter fallback, and `--compile` / `--force-compile` / `--no-compile`
@@ -41,10 +41,16 @@ there is verified against boru main @ `64c5ab2`.
   errors on every suite **and** every module. All 11 suites and 4 modules pass
   it on `64c5ab2`. `boru X` runs the static check first; never use `-no-check`
   to get green.
-- Two library spots carry workarounds for open boru compiler defects (each
-  commented in place, minimal repros in `DX-REPORT.md`'s migration section):
-  `radix.aql` `common-len` and `tst.aql` `count-t`. Remove them when upstream
-  fixes land.
+- Three library spots carry workarounds for open boru defects (each commented
+  in place, minimal repros in `DX-REPORT.md`'s migration section): two compile
+  refusals — `radix.aql` `common-len` and `tst.aql` `count-t` — and one
+  cross-module run-time failure, the grouped `([] k push) v push` in
+  `tst.aql`/`burst.aql` `entries-with-prefix`. Remove them when upstream fixes
+  land.
+- On boru main @ `64c5ab2`, `Assert.equal` passes a zero-valued `""`/`0`/
+  `false` against `none` or another type (upstream defect). When the actual may
+  be `none` (`get`, `longest-prefix`), assert type-strictly:
+  `true ((x) "" eq) Assert.equal end`.
 - Known boru-runtime gotchas are in `DX-REPORT.md`; the perf workload and its
   numbers are `bench/` and `PERF-BASELINE.md`. `BORU-CHECK-REPORT.md` is a
   historical record (its "false positives are unfixable" thesis was superseded:
