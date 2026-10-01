@@ -404,7 +404,12 @@ def map-keys-with-prefix fn [
 def map-entries-with-prefix fn [
   [prefix:String t:Map] [List] [
     def ks ([] "" prefix t navigate-prefix)
-    ks each [ var [[k] def v (t k map-get) [] k push v push ] ]
+    # `([] k push) v push`, grouped: works around a boru runtime defect — the
+    # ungrouped chain `[] k push v push` inside this `each` body raises
+    # signature_error ("cannot call `push`") when the fn is called through
+    # the export from another module (it answers when called in-module).
+    # Same value either way; remove the parens when fixed upstream.
+    ks each [ var [[k] def v (t k map-get) ([] k push) v push ] ]
   ]
 ]
 

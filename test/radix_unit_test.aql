@@ -95,6 +95,19 @@ def fixture
   [] (t "z" RadixMap.keys-with-prefix) Assert.equal end
 ] "radix-prefix" Test.test end
 
+# --- entries-with-prefix ([key, value] pairs, key-sorted) ----------
+# Regression coverage: this word was never exercised by a suite, and on boru
+# main @ 64c5ab2 the tst/burst versions raised when called through the
+# export (see DX-REPORT.md, "Migration to boru main @ 64c5ab2").
+
+[
+  def t (fixture)
+  [["team" 2] ["test" 1]] (t "te" RadixMap.entries-with-prefix) Assert.equal end
+  [["slow" 4] ["slower" 5]] (t "slo" RadixMap.entries-with-prefix) Assert.equal end
+  [["slower" 5]] (t "slowe" RadixMap.entries-with-prefix) Assert.equal end
+  [] (t "z" RadixMap.entries-with-prefix) Assert.equal end
+] "radix-entries-with-prefix" Test.test end
+
 
 # --- longest-prefix --------------------------------------------------
 

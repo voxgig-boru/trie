@@ -84,6 +84,19 @@ def fixture
   ["car" "card" "cat" "dog"] (t "" TrieMap.keys-with-prefix) Assert.equal end
 ] "map-prefix" Test.test end
 
+# --- entries-with-prefix ([key, value] pairs, key-sorted) ----------
+# Regression coverage: this word was never exercised by a suite, and on boru
+# main @ 64c5ab2 the tst/burst versions raised when called through the
+# export (see DX-REPORT.md, "Migration to boru main @ 64c5ab2").
+
+[
+  def t (fixture)
+  [["car" 2] ["card" 3] ["cat" 1]] (t "ca" TrieMap.entries-with-prefix) Assert.equal end
+  [["card" 3]] (t "card" TrieMap.entries-with-prefix) Assert.equal end
+  [] (t "z" TrieMap.entries-with-prefix) Assert.equal end
+  [["car" 2] ["card" 3] ["cat" 1] ["dog" 4]] (t "" TrieMap.entries-with-prefix) Assert.equal end
+] "map-entries-with-prefix" Test.test end
+
 
 # --- TrieMap: longest-prefix ----------------------------------------
 
