@@ -184,7 +184,7 @@ it:
 
 ```boru
 def t (((TrieMap.make) "a" 1 TrieMap.set) "b" 2 TrieMap.set)
-def snapshot (t TrieMap.encode)    # JSON: {"entries": [["a", 1], ["b", 2]], "kind": "triemap", "size": 2}
+def snapshot (t TrieMap.encode)    # pretty-printed JSON of {"entries": [["a", 1], ["b", 2]], "kind": "triemap", "size": 2}
 def t2 (snapshot TrieMap.decode)
 print (t2 "b" TrieMap.get)          # => 2
 ```

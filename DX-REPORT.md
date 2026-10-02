@@ -31,7 +31,7 @@ writing boru data structures and to the language authors.
 > fallback, `--compile`/`--force-compile` retired); every suite compiles and
 > runs green, and `boru check` is clean on every suite and module. The breaking
 > changes, three commented workarounds (two compiler refusals and one
-> cross-module run-time defect), the open upstream defects (including
+> call-path-dependent run-time defect), the open upstream defects (including
 > `Assert.equal` passing unequal values across types) and a TST empty-key bug
 > are in [Migration to boru main @ 64c5ab2](#migration-to-boru-main--64c5ab2-2026-10-01).
 > Sections between here and there that mention the interpreter,
@@ -770,22 +770,28 @@ plain `Map`, `List`, `String`, `Integer`, `Boolean` or `none` — there is no
    print ({lo: none, mid: none} f)
    ```
 3. **`tst.aql` / `burst.aql` `entries-with-prefix` — run-time defect: an
-   ungrouped `push` chain in an `each [var …]` body fails when the fn is called
-   through its export from another module.** `[] k push v push` raised
-   `signature_error: cannot call push` (the note even lists arguments that
-   match `push [Any List]`). The identical fn answers when called in-module —
-   directly, or from the defining module's own body — and `boru check` is
-   clean. Grouping the first call, `([] k push) v push`, avoids it, as does
-   `push/s`. No suite exercised `entries-with-prefix`, so the gate stayed green
-   until every word was re-run cross-variant; each unit suite now has an
-   `entries-with-prefix` block that fails against the unpatched modules.
+   ungrouped `push` chain over a `var`-bound name in a loop body answers or
+   raises depending on how its fn is reached.** `[] k push v push` inside an
+   `each [var …]` body raised `signature_error: cannot call push`. The fn
+   answers when called directly from a module's top level, and raises when the
+   same fn is called from inside another fn's body — in the same module — or
+   through its export (which is how every caller and every suite reaches it).
+   It is not specific to modules: the verifier reduced it to one file (below).
+   A `fold [var …]` body with `acc ([] k push 7 push) push` fails the same way.
+   `boru check` is clean throughout. Grouping the first call,
+   `([] k push) v push`, avoids it, as does `push/s`. No suite exercised
+   `entries-with-prefix`, so the gate stayed green until every word was re-run
+   cross-variant; each unit suite now has an `entries-with-prefix` block that
+   fails against the unpatched modules. (A verifier sweep then ran every
+   public word of all eight namespaces in five call contexts — top level,
+   inside a user fn, through a second fn, inside an `each` body inside a fn,
+   and inside a top-level `each` — and all of them agree.)
    ```boru
-   # lib.boru
    def f fn [ [ks:List] [List] [ ks each [ var [[k] [] k push 7 push ] ] ] ]
-   export "L" { f: f/v }
-   # main.boru — expected [["a", 7], ["b", 7]]; actual signature_error at `push`
-   import "./lib.boru"
-   print (L.f ["a" "b"])
+   def g fn [ [ks:List] [List] [ ks f ] ]
+   print (f ["a" "b"])   # [["a", 7], ["b", 7]]
+   print (g ["a" "b"])   # expected the same; actual: each: element 0:
+                         #   [boru/signature_error]: cannot call `push`
    ```
 
 ### Open upstream defects (found or confirmed in this migration)
@@ -809,8 +815,19 @@ plain `Map`, `List`, `String`, `Integer`, `Boolean` or `none` — there is no
   Test.test "J" [ Assert.equal 1 "1" ]       # fails, correctly
   print (`fail count: ${(Test.fail-count)}`) # 1, expected 3
   ```
-- **Cross-module `push` chain in a loop body** (workaround 3) — a run-time
-  answer bug; not yet in NUR.md.
+- **A `push` chain in a loop body that depends on the call path**
+  (workaround 3) — a run-time answer bug; not yet in NUR.md.
+- **A missing relative import is reported as a compiler defect.**
+  `import "./does-not-exist.aql"` (say, a vendored path that is wrong, or an
+  old cwd-relative path after imports became file-relative) does not raise a
+  file-not-found error: `boru check` degrades the import to an opaque `Module`
+  carrier and reports 0 errors (the `Module` is left on the stack), and
+  `boru X` then stops at the compile pass with
+  `[boru/compile_failed] … residual value of unknown provenance — this is a
+  compiler defect`, which does not name the file. Any program whose only
+  statement is that import reproduces it. When the program goes on to use the
+  namespace, `boru check` reports `undefined_word` at that use instead, which
+  at least points near the cause. Not in NUR.md.
 - **The two compile refusals** behind workarounds 1 and 2.
 - **"twin regime: a bind transition has no stream placement"** — a `var`
   inside an `each` body nested in another `each` body refuses to compile

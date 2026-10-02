@@ -301,9 +301,10 @@ def map-entries-with-prefix fn [
     def ks (t prefix map-keys-with-prefix)
     # `([] k push) v push`, grouped: works around a boru runtime defect — the
     # ungrouped chain `[] k push v push` inside this `each` body raises
-    # signature_error ("cannot call `push`") when the fn is called through
-    # the export from another module (it answers when called in-module).
-    # Same value either way; remove the parens when fixed upstream.
+    # signature_error ("cannot call `push`") whenever the fn is called from
+    # inside another fn's body or through the export; it answers only when
+    # called directly from a module's top level. Same value either way;
+    # remove the parens when fixed upstream.
     ks each [ var [[k] def v (t k tst-get) ([] k push) v push ] ]
   ]
 ]

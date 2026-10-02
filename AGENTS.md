@@ -25,6 +25,12 @@ A relative import resolves **against the importing file's own directory**, not
 the directory you run `boru` from — so a script at the project root writes
 `./lib/trie/trie.aql`, and a test under `test/` writes `../lib/trie/trie.aql`.
 (This changed upstream; older boru resolved against the working directory.)
+A wrong path is **not** reported as a missing file on boru main @ `64c5ab2`:
+the import itself passes `boru check`, so the symptom is
+`undefined_word: undefined word: TrieSet` at the first use — or, if nothing
+uses the namespace yet, `[boru/compile_failed] … residual value of unknown
+provenance — this is a compiler defect`. Check the import path first (see
+`DX-REPORT.md`).
 
 **Registry.** If published: `boru install trie-<version>`, then `import "trie"`
 loads the package `main` (`trie.aql` → `TrieMap`/`TrieSet`); import other
@@ -283,13 +289,14 @@ boru main @ `64c5ab2`); the load-bearing boru traps are:
   `var [[pair a] … a [(pair get 1)] push]` fails with `undefined word`;
   bind through `def` first (`def v (pair get 1)`, then `[v]`).
 - **Group a stack-form `push` chain inside a loop body** —
-  `([] k push) v push`, not `[] k push v push`. Inside an `each [var …]`
-  body of a fn that is called through its export from another module, the
-  ungrouped chain raises `signature_error: cannot call push` (it answers when
-  the fn is called in-module, and `boru check` is clean) — an open boru
-  defect; `tst.aql`/`burst.aql` `entries-with-prefix` carry the workaround.
-  The suites import the modules, so they exercise the cross-module path;
-  `entries-with-prefix` now has a unit case on every variant.
+  `([] k push) v push`, not `[] k push v push`. Inside an `each [var …]` (or
+  `fold [var …]`) body, the ungrouped chain over a `var`-bound name raises
+  `signature_error: cannot call push` whenever its fn is called from inside
+  another fn's body or through the module export — it answers only when the
+  fn is called directly from a module's top level, and `boru check` is clean
+  either way. An open boru defect; `tst.aql`/`burst.aql`
+  `entries-with-prefix` carry the workaround, and `entries-with-prefix` now
+  has a unit case on every variant (the suites reach it through the export).
 - **Initialise a `fold` accumulator with a plain map literal**, not
   `do {k: [v]}`: inside a fn body, a `do {…}` at the head of a paren that then
   reads a fn-local def loses that def (an open boru compiler defect —

@@ -15,7 +15,7 @@
 > **all 11 suites compile, run and print `all green`**, and `boru check`
 > reports **0 errors and 0 warnings** on all 11 suites and all 4 modules. Three
 > library sites carry commented workarounds for open boru defects (two compile
-> refusals, one cross-module run-time failure). Sections §1–§12 below describe
+> refusals, one call-path-dependent run-time failure). Sections §1–§12 below describe
 > the earlier interpret / check / `--force-compile` regime and are historical.
 
 ## Task
@@ -794,9 +794,11 @@ way to run it now.
 - **Two compile refusals worked around** (commented in place): `radix.aql`
   `common-len` ("dynamic-scope def `m` of unpromoted computed value" — a
   plain map-literal fold init) and `tst.aql` `count-t` (NUR357 — an infix sum).
-- **One cross-module run-time failure worked around**: `tst.aql` / `burst.aql`
-  `entries-with-prefix` raised `signature_error: cannot call push` when called
-  through the export; `([] k push) v push` grouping avoids it. No suite
+- **One call-path-dependent run-time failure worked around**: `tst.aql` /
+  `burst.aql` `entries-with-prefix` raised `signature_error: cannot call push`
+  when called through the export (the verifier later reduced it to one file:
+  the same fn raises whenever it is called from inside another fn, and answers
+  only from top level); `([] k push) v push` grouping avoids it. No suite
   exercised the word, so the gate had stayed green; each unit suite now covers
   it.
 - **Re-verifying every word across all four variants** (scratch scripts, all

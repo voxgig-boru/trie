@@ -44,9 +44,10 @@ there is verified against boru main @ `64c5ab2`.
 - Three library spots carry workarounds for open boru defects (each commented
   in place, minimal repros in `DX-REPORT.md`'s migration section): two compile
   refusals — `radix.aql` `common-len` and `tst.aql` `count-t` — and one
-  cross-module run-time failure, the grouped `([] k push) v push` in
-  `tst.aql`/`burst.aql` `entries-with-prefix`. Remove them when upstream fixes
-  land.
+  call-path-dependent run-time failure (a loop-body `push` chain that raises
+  when its fn is reached from another fn or through the export), the grouped
+  `([] k push) v push` in `tst.aql`/`burst.aql` `entries-with-prefix`. Remove
+  them when upstream fixes land.
 - On boru main @ `64c5ab2`, `Assert.equal` passes a zero-valued `""`/`0`/
   `false` against `none` or another type (upstream defect). When the actual may
   be `none` (`get`, `longest-prefix`), assert type-strictly:
