@@ -131,9 +131,11 @@ Earlier versions of this library stored children as association lists of
 `[char, child]` pairs, because boru then had no way to build or walk a map
 with computed keys. That language gap — reported in `DX-REPORT.md` — was
 closed upstream (`{[k]: v}` literals, copy-returning Map `set`,
-`StructUtil.items`), and the workaround is retired. One asymmetry remains:
-there is no key-*removal* word, so deleting a child rebuilds the map from
-its entries, skipping one — the same cost the list splice had.
+`StructUtil.items`), and the workaround is retired. Deleting a child rebuilds
+the map from its entries, skipping one — the same cost the list splice had.
+(boru has since gained a core `del`, copy-returning on a Map —
+`kids del (ch)` — which would be an equivalent, simpler spelling; the
+rebuild is kept because it is verified and costs the same.)
 
 ### Why not `merge`
 

@@ -1,20 +1,21 @@
 # Radix-tree tests using boru:test's imperative API.
 #
-# Runs identically under the interpreter, `aql check`, and the bytecode
-# compiler:
-#   aql test/radix_unit_test.aql
-#   aql check test/radix_unit_test.aql
-#   aql --force-compile test/radix_unit_test.aql
+# Run it, and check it (boru has one execution path: the suite compiles to
+# bytecode and runs on the VM; `boru check` is the static surface):
+#   boru test/radix_unit_test.aql          # compile + run; must print `all green`
+#   boru check test/radix_unit_test.aql    # static check (0 errors)
 
 
 import "boru:test"
-import "./radix.aql"
+import "../radix.aql"
 
 
 # Keys chosen to exercise edge splits and shared prefixes:
 #   test, team share "te"; slow/slower/slowest nest; toast shares only "t".
-# A shared immutable value (not a `fn`): tries never mutate, and a user-`fn`
-# call inside a `Test.test` quotation is a bytecode-compiler refusal.
+# A shared immutable value (not a `fn`): tries never mutate, so one value
+# serves every test. (Historically a user-`fn` call inside a `Test.test`
+# quotation was a bytecode-compiler refusal; on boru main @ 64c5ab2 both
+# shapes compile.)
 def fixture
   (((((( RadixMap.make)
     "test"    1 RadixMap.set)
@@ -94,6 +95,19 @@ def fixture
   [] (t "z" RadixMap.keys-with-prefix) Assert.equal end
 ] "radix-prefix" Test.test end
 
+# --- entries-with-prefix ([key, value] pairs, key-sorted) ----------
+# Regression coverage: this word was never exercised by a suite, and on boru
+# main @ 64c5ab2 the tst/burst versions raised when called through the
+# export (see DX-REPORT.md, "Migration to boru main @ 64c5ab2").
+
+[
+  def t (fixture)
+  [["team" 2] ["test" 1]] (t "te" RadixMap.entries-with-prefix) Assert.equal end
+  [["slow" 4] ["slower" 5]] (t "slo" RadixMap.entries-with-prefix) Assert.equal end
+  [["slower" 5]] (t "slowe" RadixMap.entries-with-prefix) Assert.equal end
+  [] (t "z" RadixMap.entries-with-prefix) Assert.equal end
+] "radix-entries-with-prefix" Test.test end
+
 
 # --- longest-prefix --------------------------------------------------
 
@@ -104,6 +118,18 @@ def fixture
   "slower"(t "slower"  RadixMap.longest-prefix) Assert.equal end
   none    (t "zoo"     RadixMap.longest-prefix) Assert.equal end
 ] "radix-longest-prefix" Test.test end
+
+# A stored empty key "" prefixes every query, so it is the answer when no
+# longer key matches (every variant agrees; the TST once returned `none`).
+# Compared with `eq`, not `"" (x) Assert.equal`: on boru main @ 64c5ab2
+# Assert.equal passes a zero-valued String/Integer/Boolean against `none`
+# or any other type (see DX-REPORT.md), so it could not catch `none` here.
+[
+  def t2 ((fixture) "" 0 RadixMap.set)
+  true ((t2 "zebra" RadixMap.longest-prefix) "" eq) Assert.equal end
+  true ((t2 "slowest" RadixMap.longest-prefix) "slow" eq) Assert.equal end
+  true ((t2 "" RadixMap.longest-prefix) "" eq) Assert.equal end
+] "radix-longest-prefix-empty-key" Test.test end
 
 
 # --- delete with branch merge ---------------------------------------
@@ -192,7 +218,11 @@ def fixture
 
 # --- summary -------------------------------------------------------
 
-"---" print
-"fail count: " print Test.fail-count end print
-0 Test.fail-count end Assert.equal end
-"all green" print
+# One terminated statement per line: `"---" print "fail count: " …` lets
+# `print` collect the NEXT literal forward, so an unterminated chain prints
+# out of order and leaves a stray value for the assertion to compare.
+"---" print end
+"fail count: " print end
+(Test.fail-count) print end
+Assert.equal 0 (Test.fail-count) end
+"all green" print end

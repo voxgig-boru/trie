@@ -1,7 +1,14 @@
 # Close the `--force-compile` coverage gap for client libraries
 
+> **Status (2026-10-01): resolved upstream.** boru main moved to a single
+> execution path on 2026-09-19 — every program compiles to bytecode or fails
+> with `compile_failed`, and `--force-compile` is retired. On boru main @
+> `64c5ab2` all 11 trie suites compile and run green (two compile refusals are
+> worked around in the library; see `DX-REPORT.md`, "Migration to boru main @
+> 64c5ab2"). Kept as the historical brief.
+
 > **Provenance.** Surfaced by the `boru`-main verification track for this library
-> (`boru-MAIN-VERIFICATION.md`, §6–§8). As of `boru main @ 407fedad` the
+> (`BORU-MAIN-VERIFICATION.md`, §6–§8). As of `boru main @ 407fedad` the
 > interpreter and `boru check` are fully green (0 errors) on all 11 suites and
 > all 4 modules; the **strict bytecode path (`--force-compile`)** is the only
 > remaining non-green path. This is a prompt/brief to direct work **in the

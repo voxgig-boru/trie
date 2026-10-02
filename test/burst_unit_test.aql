@@ -1,18 +1,19 @@
 # Burst-trie tests using boru:test's imperative API.
 #
-# Runs identically under the interpreter, `aql check`, and the bytecode
-# compiler:
-#   aql test/burst_unit_test.aql
-#   aql check test/burst_unit_test.aql
-#   aql --force-compile test/burst_unit_test.aql
+# Run it, and check it (boru has one execution path: the suite compiles to
+# bytecode and runs on the VM; `boru check` is the static surface):
+#   boru test/burst_unit_test.aql          # compile + run; must print `all green`
+#   boru check test/burst_unit_test.aql    # static check (0 errors)
 
 
 import "boru:test"
-import "./burst.aql"
+import "../burst.aql"
 
 
-# A shared immutable value (not a `fn`): tries never mutate, and a user-`fn`
-# call inside a `Test.test` quotation is a bytecode-compiler refusal.
+# A shared immutable value (not a `fn`): tries never mutate, so one value
+# serves every test. (Historically a user-`fn` call inside a `Test.test`
+# quotation was a bytecode-compiler refusal; on boru main @ 64c5ab2 both
+# shapes compile.)
 def fixture
   ((((( BurstMap.make)
     "cat"  1 BurstMap.set)
@@ -22,8 +23,9 @@ def fixture
 
 # 12 keys all sharing the "key" prefix — well over burst-limit (8) — so the
 # root bucket must *burst* into a trie node. Built from an entry list (a
-# value, not a `fold`-driven generator: `fold`/`each` bodies are not yet
-# lowerable by the bytecode compiler — see DX-REPORT.md).
+# value, not a `fold`-driven generator — historically `fold`/`each` bodies were
+# not lowerable by the bytecode compiler; on boru main @ 64c5ab2 they are, see
+# DX-REPORT.md).
 def bursted
   ([["key0" 0] ["key1" 1] ["key2" 2] ["key3" 3] ["key4" 4] ["key5" 5]
     ["key6" 6] ["key7" 7] ["key8" 8] ["key9" 9] ["key10" 10] ["key11" 11]]
@@ -97,6 +99,21 @@ def bursted
   ["car" "card" "cat" "dog"] (t "" BurstMap.keys-with-prefix) Assert.equal end
 ] "burst-prefix" Test.test end
 
+# --- entries-with-prefix ([key, value] pairs, key-sorted) ----------
+# Regression coverage: this word was never exercised by a suite, and on boru
+# main @ 64c5ab2 the tst/burst versions raised when called through the
+# export (see DX-REPORT.md, "Migration to boru main @ 64c5ab2").
+
+[
+  def t (fixture)
+  [["car" 2] ["card" 3] ["cat" 1]] (t "ca" BurstMap.entries-with-prefix) Assert.equal end
+  [["card" 3]] (t "card" BurstMap.entries-with-prefix) Assert.equal end
+  [] (t "z" BurstMap.entries-with-prefix) Assert.equal end
+  [["car" 2] ["card" 3] ["cat" 1] ["dog" 4]] (t "" BurstMap.entries-with-prefix) Assert.equal end
+  # …and after the bucket has burst into a trie node
+  [["key1" 1] ["key10" 10] ["key11" 11]] (bursted "key1" BurstMap.entries-with-prefix) Assert.equal end
+] "burst-entries-with-prefix" Test.test end
+
 
 # --- prefix queries survive a burst ---------------------------------
 
@@ -116,6 +133,18 @@ def bursted
   "cat"  (t "cat"     BurstMap.longest-prefix) Assert.equal end
   none   (t "zebra"   BurstMap.longest-prefix) Assert.equal end
 ] "burst-longest-prefix" Test.test end
+
+# A stored empty key "" prefixes every query, so it is the answer when no
+# longer key matches (every variant agrees; the TST once returned `none`).
+# Compared with `eq`, not `"" (x) Assert.equal`: on boru main @ 64c5ab2
+# Assert.equal passes a zero-valued String/Integer/Boolean against `none`
+# or any other type (see DX-REPORT.md), so it could not catch `none` here.
+[
+  def t2 ((fixture) "" 0 BurstMap.set)
+  true ((t2 "zebra" BurstMap.longest-prefix) "" eq) Assert.equal end
+  true ((t2 "cardiff" BurstMap.longest-prefix) "card" eq) Assert.equal end
+  true ((t2 "" BurstMap.longest-prefix) "" eq) Assert.equal end
+] "burst-longest-prefix-empty-key" Test.test end
 
 
 # --- delete ----------------------------------------------------------
@@ -201,7 +230,11 @@ def bursted
 
 # --- summary -------------------------------------------------------
 
-"---" print
-"fail count: " print Test.fail-count end print
-0 Test.fail-count end Assert.equal end
-"all green" print
+# One terminated statement per line: `"---" print "fail count: " …` lets
+# `print` collect the NEXT literal forward, so an unterminated chain prints
+# out of order and leaves a stray value for the assertion to compare.
+"---" print end
+"fail count: " print end
+(Test.fail-count) print end
+Assert.equal 0 (Test.fail-count) end
+"all green" print end

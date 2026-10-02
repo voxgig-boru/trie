@@ -11,9 +11,9 @@ import "./trie.aql"
 
 def t (((TrieSet.make) "cat" TrieSet.add) "car" TrieSet.add)
 
-(t "car" TrieSet.has)            print   # => true
-(t "ca"  TrieSet.with-prefix)    print   # => ["car", "cat"]
-(t "cartoon" TrieSet.longest-prefix) print  # => "car"
+print (t "car" TrieSet.has)                 # => true
+print (t "ca"  TrieSet.with-prefix)         # => ["car", "cat"]
+print (t "cartoon" TrieSet.longest-prefix)  # => car
 ```
 
 > **Calling convention.** Forward args, receiver (the trie) **last**:
@@ -62,8 +62,10 @@ The standard trie additionally offers two **advanced queries**:
 Tries are **persistent (immutable)**: every `add`/`set`/`delete` returns
 a *new* trie and leaves the input untouched. Calls use boru's
 forward-dispatch — arguments resolve at the next word or paren, so an
-explicit `end` is rarely needed. Full details and the calling convention
-are in the [Reference](docs/reference.md).
+explicit `end` is rarely needed; the receiver (the trie) is always the
+**last** parameter, so the stack forms in the table above and the forward
+form `TrieSet.add "cat" t` bind the same way. Full details and the calling
+convention are in the [Reference](docs/reference.md).
 
 ## Documentation
 
@@ -114,26 +116,33 @@ test/trie_unit_spec.aql        example-based unit tests — declarative spec (st
 test/<variant>_prop_spec.aql   property-based tests — declarative spec
 test/trie_prop_test.aql        property-based tests — direct (Test.check-prop)
 test/trie_smoke_test.aql       smoke demo across all four variants
+test/divergence/run.sh         the test gate: every suite compiled + boru check
+bench/                         perf workload (see PERF-BASELINE.md)
 docs/                          Diátaxis documentation (above)
-dx-report.md                   developer-experience notes on building this in boru
+DX-REPORT.md                   developer-experience notes on building this in boru
+BORU-MAIN-VERIFICATION.md      the log of retests against boru main
 ```
 
 ## Running it
 
-Build the `boru` interpreter, then run the demo or any test — see
-[How-to → Install and run](docs/how-to.md#install-and-run-aql) and
-[Run the tests](docs/how-to.md#run-the-tests):
+Build `boru`, then run the demo or any test — see
+[How-to → Install and run](docs/how-to.md#install-and-run-boru) and
+[Run the tests](docs/how-to.md#run-the-tests). boru has one execution path:
+each run compiles the program to bytecode and executes it on the VM.
 
 ```bash
 boru test/trie_smoke_test.aql   # smoke demo across all variants
 boru test/trie_unit_test.aql    # unit tests (standard trie; one suite per variant)
 boru test/trie_prop_spec.aql    # property tests (standard trie)
+test/divergence/run.sh          # every suite + boru check on every file (the CI gate)
 ```
 
 A GitHub Actions workflow
-([`.github/workflows/test.yml`](.github/workflows/test.yml)) builds boru from a
-pinned commit and runs every suite — plus a `consistency` job (agent-skill
-drift, JSON manifests, and a pinned-ref guard) — on each push and pull request.
+([`.github/workflows/test.yml`](.github/workflows/test.yml), canonical copy in
+[`ci/test.yml`](ci/test.yml)) builds boru at boru-lang/boru `main` HEAD and runs
+the gate script — plus a `consistency` job (agent-skill drift and JSON
+manifests) — on each push and pull request. Last verified by hand against boru
+main @ `64c5ab2`.
 
 ## License
 

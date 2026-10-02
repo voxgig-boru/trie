@@ -1,20 +1,33 @@
 #!/bin/bash
-# Time the trie benchmark under the interpreter and the bytecode compiler,
-# across a series of key counts. Reports best-of-1 wall time. Requires `boru`
-# on PATH. Run from anywhere; imports resolve relative to the repo root, so
-# this script cd's there and invokes the bench by path.
+# Time the trie benchmark across a series of key counts. Reports best-of-1
+# wall time.
+#
+# boru has ONE execution path: a program compiles to bytecode and runs on the
+# VM, or fails with `[boru/compile_failed] … compiler defect`. The old
+# interpreter-vs-compiled comparison (`--no-compile` / `--compile`) is gone —
+# those flags are retired upstream and are now usage errors — so this times
+# the single path and checks that each run actually built N keys.
+#
+# Uses `boru` from PATH, or $BORU if set (e.g. BORU=/path/to/boru). Run from
+# anywhere: imports resolve against the importing file's own directory.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT"
-BENCH=bench/trie_bench.aql
+BORU="${BORU:-boru}"
+BENCH="$ROOT/bench/trie_bench.aql"
 SIZES="${SIZES:-500 1000 2000}"
-orig=$(grep '^def N ' "$BENCH")
-timerun() { local mode="$1" s e; s=$(date +%s.%N); boru "$mode" "$BENCH" >/dev/null 2>&1; e=$(date +%s.%N); awk "BEGIN{printf \"%.2f\", $e-$s}"; }
-printf "%-8s %-14s %-14s %-8s\n" "N" "interp(s)" "compiled(s)" "speedup"
+tmp="$ROOT/bench/.trie_bench_run.aql"   # beside the bench so ../trie.aql resolves
+trap 'rm -f "$tmp"' EXIT
+printf "%-8s %-12s %-8s\n" "N" "wall(s)" "status"
+fail=0
 for n in $SIZES; do
-  sed -i "s/^def N .*/def N $n/" "$BENCH"
-  i=$(timerun --no-compile); c=$(timerun --compile)
-  sp=$(awk "BEGIN{printf \"%.2fx\", $i/$c}")
-  printf "%-8s %-14s %-14s %-8s\n" "$n" "$i" "$c" "$sp"
+  sed "s/^def n .*/def n $n/" "$BENCH" > "$tmp"
+  s=$(date +%s.%N)
+  out=$("$BORU" "$tmp" 2>&1); rc=$?
+  e=$(date +%s.%N)
+  size=$(printf '%s\n' "$out" | sed -n '/^size:/{n;p;}')
+  status=ok
+  if [ $rc -ne 0 ]; then status="FAIL(rc=$rc)"; fail=1; elif [ "$size" != "$n" ]; then status="WRONG(size=$size)"; fail=1; fi
+  printf "%-8s %-12s %-8s\n" "$n" "$(awk "BEGIN{printf \"%.2f\", $e-$s}")" "$status"
 done
-sed -i "s/^def N .*/$orig/" "$BENCH"
+# A failed or wrong-size run fails the script, so callers cannot mistake it for a timing.
+exit $fail

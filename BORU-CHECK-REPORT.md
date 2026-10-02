@@ -1,5 +1,12 @@
 # `boru check` on the trie library: a diagnostics report
 
+> **Historical record — superseded.** On boru main @ `64c5ab2` (2026-10-01)
+> `boru check` reports **0 errors** on every suite and every module, it is a
+> **hard gate** (`test/divergence/run.sh`, which CI runs), and every `boru X`
+> run performs it first. The `--soft` / advisory CI step described below no
+> longer exists. The false-positive classes this report catalogued were fixed
+> upstream; it is kept as the record of how they were found.
+
 A record of what the boru static checker (`boru check`) reports when run over this
 library, why those reports are **false positives** on this style of code, and
 what (if anything) would make the checker useful here. It backs the decision to

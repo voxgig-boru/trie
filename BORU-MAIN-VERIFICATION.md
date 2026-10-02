@@ -1,26 +1,22 @@
 # Verifying the trie library against `boru` main — interpret / check / compile
 
-**Date:** 2026-06-23, last retested 2026-07-11
+**Date:** 2026-06-23, last retested 2026-10-01
 **boru tested:** `main` @ `f8ee6426` → `65410b18` → `14036b41` → `407fedad` →
-`0721e828` → **`6185620`** (current pin), all built from source
-**boru currently pinned:** `618562025d9e0154107306927911a8b1b046333c`
+`0721e828` → `6185620` → **`64c5ab2`** (2026-09-30), all built from source
+**boru tracked:** `main` HEAD — no pinned commit (CI, the SessionStart hook and
+`test/divergence/run.sh` all resolve and build `main` at run time)
 **Library:** `voxgig-boru/trie` (standard trie + radix / tst / burst variants)
 
-> **CURRENT STATE (`6185620` + 3 landed upstream fixes, 2026-07-11) — see
-> [§11](#11-three-stage-d-fixes-landed-upstream-remaining-frontier-precisely-scoped).**
-> Re-pinned to the newest `main`, `6185620` (PR #260, forward-args auto-eval).
-> **Both hard CI gates are green**: interpreter 11/11 suites, `boru check` 0
-> errors across all 11 suites + 4 modules. Three of the Stage-D leaves §10
-> diagnosed now have **landed fixes** on the boru branch
-> `claude/voxgig-boru-baseline-pctxto` (commit `3e94429`) — including the do-catch
-> fix that resolves the "not safe to land alone" regression §10 warned about.
-> With them, the trie suites split **4 fully native-compiled / 5 sound
-> clean-fallback**, every suite **stdout-byte-identical** interpreter-vs-`--compile`
-> and green. §11 records the landed fixes, the residual frontier (one recursive
-> branch-join provenance bug, root-caused; plus the deferred `test-test`/`each`
-> emitter words), and why the pin stays `6185620` (fixes are on a branch, not yet
-> merged to `main`). §10 is the prior (pre-fix) root-cause map; §9 (`0721e828`)
-> the retest before it.
+> **CURRENT STATE (boru main @ `64c5ab2`, 2026-10-01) — see
+> [§13](#13-retest-at-64c5ab2--one-execution-path-everything-compiles-and-checks-clean).**
+> boru now has **one execution path**: a program compiles to bytecode and runs
+> on the VM, or fails with `compile_failed`; the interpreter lane and
+> `--compile` / `--force-compile` / `--no-compile` are retired. On `64c5ab2`
+> **all 11 suites compile, run and print `all green`**, and `boru check`
+> reports **0 errors and 0 warnings** on all 11 suites and all 4 modules. Three
+> library sites carry commented workarounds for open boru defects (two compile
+> refusals, one call-path-dependent run-time failure). Sections §1–§12 below describe
+> the earlier interpret / check / `--force-compile` regime and are historical.
 
 ## Task
 
@@ -117,7 +113,7 @@ imported library:
 | `tst_unit_test`   | 70 `no_signature` |
 | `burst_unit_test` | 28 `no_signature` |
 
-Every one is a **documented false positive** (see `boru-CHECK-REPORT.md`):
+Every one is a **documented false positive** (see `BORU-CHECK-REPORT.md`):
 
 - `no_signature` on `Any`-typed dynamic dispatch — the diagnostics point at
   library internals (`get`, `find-kid`, `trie-insert`, `mk-node`,
@@ -169,7 +165,7 @@ library is currently **uncheckable and uncompilable for any downstream
 consumer** on `main`. That is a far larger blast radius than before.
 
 This sharpens — does not change — the standing wishlist from
-`boru-CHECK-REPORT.md` (items 1–4): until `boru check` can distinguish this
+`BORU-CHECK-REPORT.md` (items 1–4): until `boru check` can distinguish this
 library's deliberate dynamic dispatch from a real error
 (trace `/r` reference-exports, unify `Any` with concrete params, resolve
 `do{}` quotation params, declare `Returns` on core words), the transitive
@@ -245,7 +241,7 @@ check gate for any program that imports the library.
 **Conclusion holds:** keep the pin at `c44d994f`. Adopting `main` still waits
 on the transitive-check change no longer surfacing imported-module
 diagnostics as gating errors, or on the library's documented false-positive
-classes being resolved upstream (`boru-CHECK-REPORT.md` wishlist 1–4).
+classes being resolved upstream (`BORU-CHECK-REPORT.md` wishlist 1–4).
 
 ### Access note
 
@@ -406,7 +402,7 @@ Re-pinned to **`407fedad`** (latest `main`, a few commits past the doc's
 | `trie`/`radix`/`tst`/`burst`.aql (module-direct) | — | **0 errors** | — |
 
 That is down from the 150–300 errors per module the original
-`boru-CHECK-REPORT.md` catalogued — its "these false positives are unfixable
+`BORU-CHECK-REPORT.md` catalogued — its "these false positives are unfixable
 without upstream items 1–4" thesis is now **superseded**: items 1–4 all
 landed.
 
@@ -473,7 +469,7 @@ but the Go proxy is reachable.
 ### Breaking change — strict forward-collection is now an error
 
 `main` promoted the long-known chained-print / forward-collection foot-gun
-(`dx-report.md`: "`5 print 6 print` prints `6` then `5`") from silent
+(`DX-REPORT.md`: "`5 print 6 print` prints `6` then `5`") from silent
 misordering to a hard `signature_error`:
 
 ```
@@ -487,7 +483,7 @@ It fired at **both check and interpret** on the one place a bare `print`
 immediately preceded a `def` barrier — `test/trie_prop_test.aql`'s summary
 (`"results:" print` / `def all-results …`). Blast radius: **1 of 11 suites**.
 Fix: `end`-terminate those prints (`"results:" print end`), the exact idiom
-`dx-report.md` already prescribes ("one `print end` per line"). This is a
+`DX-REPORT.md` already prescribes ("one `print end` per line"). This is a
 **good** change — it makes a silent reorder loud — but it is a breaking one
 for code that leaned on the tolerant behaviour.
 
@@ -748,3 +744,80 @@ fixpoint provenance, L-NP's dynamic-scope read miss, the `RunCompiledReason`
 side-effect-duplication soundness gap that L-NP exposed). Any DIFFERENT downstream
 code hitting those shapes still falls back (or, for L-NP-class shapes, could
 duplicate output) until the emitter closes them.
+
+## 13. Retest at `64c5ab2` — one execution path; everything compiles and checks clean
+
+**Date:** 2026-10-01. **boru:** main @ `64c5ab2f3aed` (2026-09-30), built from
+source (`cmd/go` → `./boru`); `boru -version` → `boru 0.1.0-dev (git 64c5ab2f3aed)`.
+The previous retest (§10–§12) was at `6185620` (2026-07-21), ~1,600 upstream
+commits earlier.
+
+### What changed upstream that matters here
+
+- **Single execution path (2026-09-19).** No interpreter fallback; the
+  `--compile` / `--force-compile` / `--no-compile` flags and the
+  `BORU_*COMPILE` env vars are usage errors. "Interpret / check / compile" from
+  the task statement above collapse into two surfaces: `boru X` (static check,
+  then compile + run) and `boru check X`. The §12 "byte-identical across three
+  modes" question no longer exists — there is one mode.
+- **`/r` → `/v`** (ADR-011), **relative imports resolve against the importing
+  file**, **capitalised `def` binds a type** (Stage 2), **strict forward
+  collection** for `print`. Details and the migrations are in `DX-REPORT.md`,
+  "Migration to boru main @ 64c5ab2 (2026-10-01)".
+
+### Result — the gate (`BORU=… test/divergence/run.sh`)
+
+| File | `boru X` | `all green` | `boru check` | wall |
+|---|---|---|---|---|
+| `trie.aql` / `radix.aql` / `tst.aql` / `burst.aql` | — (module) | — | 0 errors, 0 warnings, 0 info | — |
+| `test/trie_unit_test.aql` | exit 0 | yes | 0 errors, 0 warnings | 2.9 s |
+| `test/trie_unit_spec.aql` | exit 0 | yes | 0 errors, 0 warnings | 2.6 s |
+| `test/trie_prop_test.aql` | exit 0 | yes | 0 errors, 0 warnings | 4.5 s |
+| `test/trie_prop_spec.aql` | exit 0 | yes | 0 errors, 0 warnings | 13.1 s |
+| `test/radix_unit_test.aql` | exit 0 | yes | 0 errors, 0 warnings | 4.3 s |
+| `test/radix_prop_spec.aql` | exit 0 | yes | 0 errors, 0 warnings | 16.3 s |
+| `test/tst_unit_test.aql` | exit 0 | yes | 0 errors, 0 warnings | 2.0 s |
+| `test/tst_prop_spec.aql` | exit 0 | yes | 0 errors, 0 warnings | 23.3 s |
+| `test/burst_unit_test.aql` | exit 0 | yes | 0 errors, 0 warnings | 4.8 s |
+| `test/burst_prop_spec.aql` | exit 0 | yes | 0 errors, 0 warnings | 11.3 s |
+| `test/trie_smoke_test.aql` | exit 0 | (no assertions) | 0 errors, 0 warnings | 8.8 s |
+
+The only check diagnostics are `info`-level `module_body_executed_in_check`
+notes, one per imported module. Every suite fully compiles — there is no other
+way to run it now.
+
+### What it took
+
+- **Language drift**, migrated idiomatically: the `/v` export maps, `../`
+  imports in every suite, the `def n` bench, terminated one-per-line summary
+  prints, bound `Test.check-prop` results.
+- **Two compile refusals worked around** (commented in place): `radix.aql`
+  `common-len` ("dynamic-scope def `m` of unpromoted computed value" — a
+  plain map-literal fold init) and `tst.aql` `count-t` (NUR357 — an infix sum).
+- **One call-path-dependent run-time failure worked around**: `tst.aql` /
+  `burst.aql` `entries-with-prefix` raised `signature_error: cannot call push`
+  when called through the export (the verifier later reduced it to one file:
+  the same fn raises whenever it is called from inside another fn, and answers
+  only from top level); `([] k push) v push` grouping avoids it. No suite
+  exercised the word, so the gate had stayed green; each unit suite now covers
+  it.
+- **Re-verifying every word across all four variants** (scratch scripts, all
+  eight namespaces, 20 keys including `""` and a bursting bucket) found that
+  and one pre-existing library bug — TST `longest-prefix` ignored a stored
+  empty key — now fixed and covered in every unit suite.
+- **`Assert.equal` cross-type defect** (upstream): a zero-valued `""`/`0`/
+  `false` matches `none` or another type. Every existing `Assert.equal` whose
+  actual can be `none` was re-checked type-strictly (all hold); the new
+  empty-key tests compare with `eq`.
+
+### Harness, CI, docs
+
+- `test/divergence/run.sh` is the single-path gate (run + check every suite,
+  check every module); it builds boru at `main` HEAD via the codeload tarball
+  (git-clone fallback) or reuses `BORU=/path`.
+- `ci/test.yml` and its byte-identical mirror `.github/workflows/test.yml` call
+  that script plus a bench smoke; the retired `--force-compile` lane is gone.
+- `AGENTS.md`, the skill (both copies), `README.md`, `docs/*.md`, `api.json`
+  and `DX-REPORT.md` were updated and every code example in them was executed
+  on `64c5ab2` from a scratch file.
+

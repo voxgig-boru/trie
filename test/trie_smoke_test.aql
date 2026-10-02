@@ -1,15 +1,16 @@
 # Smoke demo for the trie utilities. Imports all four variants and walks
-# the common surface of each, so `aql test/trie_smoke_test.aql` is a quick end-to-end
-# check that every module loads and answers.
+# the common surface of each, so `boru test/trie_smoke_test.aql` is a quick
+# end-to-end check that every module loads and answers.
 #
-# Each print is its own `end`-terminated statement: chained sibling prints
-# (`"a" print (x) print`) still evaluate out of source order on current aql
-# (the one open forward-collection issue), and the terminator sidesteps it.
+# Each print is its own `end`-terminated statement: `print` collects its
+# argument FORWARD, so in a chain like `"a" print (x) print` the first `print`
+# takes `(x)` and the second takes whatever follows — output leaves source
+# order. The terminator (or verb-first `print (x)`) keeps one value per line.
 
-import "./trie.aql"
-import "./radix.aql"
-import "./tst.aql"
-import "./burst.aql"
+import "../trie.aql"
+import "../radix.aql"
+import "../tst.aql"
+import "../burst.aql"
 
 "--- trie utilities smoke demo ---" print end
 
