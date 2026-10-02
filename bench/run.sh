@@ -18,6 +18,7 @@ SIZES="${SIZES:-500 1000 2000}"
 tmp="$ROOT/bench/.trie_bench_run.aql"   # beside the bench so ../trie.aql resolves
 trap 'rm -f "$tmp"' EXIT
 printf "%-8s %-12s %-8s\n" "N" "wall(s)" "status"
+fail=0
 for n in $SIZES; do
   sed "s/^def n .*/def n $n/" "$BENCH" > "$tmp"
   s=$(date +%s.%N)
@@ -25,6 +26,8 @@ for n in $SIZES; do
   e=$(date +%s.%N)
   size=$(printf '%s\n' "$out" | sed -n '/^size:/{n;p;}')
   status=ok
-  if [ $rc -ne 0 ]; then status="FAIL(rc=$rc)"; elif [ "$size" != "$n" ]; then status="WRONG(size=$size)"; fi
+  if [ $rc -ne 0 ]; then status="FAIL(rc=$rc)"; fail=1; elif [ "$size" != "$n" ]; then status="WRONG(size=$size)"; fail=1; fi
   printf "%-8s %-12s %-8s\n" "$n" "$(awk "BEGIN{printf \"%.2f\", $e-$s}")" "$status"
 done
+# A failed or wrong-size run fails the script, so callers cannot mistake it for a timing.
+exit $fail
