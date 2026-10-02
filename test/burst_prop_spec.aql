@@ -15,6 +15,23 @@ import "../trie.aql"
 def charset "abcdefghijklmnopqrstuvwxyz"
 
 
+# Generator member calls are grouped — `(r.string …)`, `(r.int …)`: the bare
+# form declines its compile stamp and runs on the interpreter (boru
+# COMPILABLE-SUBSET §5, boru-lang/boru#528). A list-of generator (a member
+# call taking an inner generator body) lives in `key-list`, called grouped,
+# because inline it either declines or, grouped inline, loses `r`; the call
+# inside `key-list` must stay grouped too (bare, it repeats its first draw).
+# Same draws, same order, same values per seed.
+
+# A list of (r.int lo hi) random keys, each 1..maxlen chars from `charset`.
+# Call: `(key-list maxlen lo hi r)`.
+def key-list fn [
+  [maxlen:Integer lo:Integer hi:Integer r:Map] [List] [
+    (r.list-of [ r.string charset (r.int 1 maxlen) ] (r.int lo hi))
+  ]
+]
+
+
 def starts-with fn [
   [pfx:String s:String] [Boolean] [
     def n (pfx size)
@@ -55,18 +72,18 @@ def report fn [
 def specs [
 
   (Test.prop "add-then-has"
-    [ r.string charset (r.int 1 12) ]
+    [ (r.string charset (r.int 1 12)) ]
     [ var [[key]
         def s ((BurstSet.make) key BurstSet.add)
         (s key BurstSet.has)
     ] ])
 
   (Test.prop "empty-has-nothing"
-    [ r.string charset (r.int 1 12) ]
+    [ (r.string charset (r.int 1 12)) ]
     [ var [[key] ((BurstSet.make) key BurstSet.has) not ] ])
 
   (Test.prop "set-then-get"
-    [ do { k: [r.string charset (r.int 1 12)], v: [r.int 0 1000] } ]
+    [ do { k: [(r.string charset (r.int 1 12))], v: [(r.int 0 1000)] } ]
     [ var [[in]
         def k (in "k" get)
         def v (in "v" get)
@@ -76,14 +93,14 @@ def specs [
 
   # Larger batches so buckets burst (burst-limit is 8).
   (Test.prop "bulk-all-present"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 5 30) ]
+    [ (key-list 6 5 30 r) ]
     [ var [[ks]
         def s (ks burst-of)
         (ks each [ var [[k] s k BurstSet.has end ] ]) all end
     ] ])
 
   (Test.prop "prefix-sound"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 5 30) ]
+    [ (key-list 6 5 30 r) ]
     [ var [[ks]
         def s (ks burst-of)
         def p (ks get 0)
@@ -92,7 +109,7 @@ def specs [
     ] ])
 
   (Test.prop "delete-removes-one"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 5 30) ]
+    [ (key-list 6 5 30 r) ]
     [ var [[ks]
         def s (ks burst-of)
         def k (ks get 0)
@@ -105,7 +122,7 @@ def specs [
 
   # CROSS-CHECK against the standard trie over identical (bursting) batches.
   (Test.prop "burst-matches-trie"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 5 40) ]
+    [ (key-list 6 5 40 r) ]
     [ var [[ks]
         def a (ks burst-of)
         def b (ks trie-of)
@@ -113,7 +130,7 @@ def specs [
     ] ])
 
   (Test.prop "longest-prefix-nested"
-    [ r.string charset 10 ]
+    [ (r.string charset 10) ]
     [ var [[s]
         def k1 (s slice 0 2)
         def k2 (s slice 0 5)

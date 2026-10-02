@@ -794,6 +794,45 @@ plain `Map`, `List`, `String`, `Integer`, `Boolean` or `none` — there is no
                          #   [boru/signature_error]: cannot call `push`
    ```
 
+### Property-test generators compile (2026-10-02)
+
+Every suite compiled as a program, but `boru -compile-report` showed that the
+property suites' **generator bodies**, which are runtime callbacks, declined
+their compile stamp and ran on the interpreter. There were 41 such sites:
+`burst_prop_spec` 8, `radix_prop_spec` 8, `trie_prop_spec` 11,
+`trie_prop_test` 6 and `tst_prop_spec` 8. Most were reported as "closure
+storedfn$body: unapplied fn-value in body residual (dynamic apply not
+lowered)". The `do {k: […] v: […]}` generator reported "finalize left the
+unit unstamped" instead. All of these belong to boru COMPILABLE-SUBSET §5
+(boru-lang/boru#528). After the rewrites below the count is **0**, and no
+site was left on the interpreter:
+
+- **Direct draws are grouped.** `[ r.string charset (r.int 1 12) ]` becomes
+  `[ (r.string charset (r.int 1 12)) ]`.
+- **The `do {…}` map generator is grouped inside each value body**
+  (`k: [(r.string …)]`, `v: [(r.int 0 1000)]`), not around the `do`. In a
+  spec, grouping the `do` itself, `[ (do {…}) ]`, still declines. Moving the
+  `do` into a fn also still declines. Under a top-level `Test.check-prop`,
+  the unchanged generator and the grouped `do` both refuse the whole program
+  with NUR356. Only the inner-grouped form compiles in both contexts.
+- **`r.list-of` generators move into one named fn per suite.** The spec
+  suites use `key-list maxlen lo hi r` and `trie_prop_test` uses
+  `fixed-keys klen n r`. The fn's body groups the call, and the generator
+  calls the fn grouped. Two other spellings compile but give the wrong
+  answer. Grouping the inline nested call loses `r`, so the property fails
+  with `undefined word: r`. Leaving the call bare inside the fn silently
+  repeats its first draw. Both are known compiler divergences that are being
+  recorded upstream.
+
+The `runs`, `seed` and `max-shrinks` arguments and every property body are
+unchanged. A scratch harness proved that the values are identical. It ran the
+HEAD and rewritten generators in each suite's own context: `Test.prop` plus
+`run-property` re-seeded with `set`, and top-level `Test.check-prop`. Each
+generator ran at seed 1 with the suite's own run count, and at seeds 4, 250
+and 99999 with 25 runs each. The harness printed every generated value and
+each result map. It also ran each suite with its real properties at the same
+seeds. The outputs were byte-identical in every case.
+
 ### Open upstream defects (found or confirmed in this migration)
 
 - **`Assert.equal` passes unequal values across types.** A zero-valued

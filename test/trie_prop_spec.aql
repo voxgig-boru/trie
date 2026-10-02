@@ -22,6 +22,23 @@ import "../trie.aql"
 def charset "abcdefghijklmnopqrstuvwxyz"
 
 
+# Generator member calls are grouped — `(r.string …)`, `(r.int …)`: the bare
+# form declines its compile stamp and runs on the interpreter (boru
+# COMPILABLE-SUBSET §5, boru-lang/boru#528). A list-of generator (a member
+# call taking an inner generator body) lives in `key-list`, called grouped,
+# because inline it either declines or, grouped inline, loses `r`; the call
+# inside `key-list` must stay grouped too (bare, it repeats its first draw).
+# Same draws, same order, same values per seed.
+
+# A list of (r.int lo hi) random keys, each 1..maxlen chars from `charset`.
+# Call: `(key-list maxlen lo hi r)`.
+def key-list fn [
+  [maxlen:Integer lo:Integer hi:Integer r:Map] [List] [
+    (r.list-of [ r.string charset (r.int 1 maxlen) ] (r.int lo hi))
+  ]
+]
+
+
 # True when string `s` begins with `pfx` (boru has no core prefix word).
 # Call: `s pfx starts-with`.
 def starts-with fn [
@@ -71,7 +88,7 @@ def specs [
 
   # 1. add then has: a key just added is always a member.
   (Test.prop "add-then-has"
-    [ r.string charset (r.int 1 12) ]
+    [ (r.string charset (r.int 1 12)) ]
     [ var [[key]
         def s ((TrieSet.make) key TrieSet.add)
         (s key TrieSet.has)
@@ -79,12 +96,12 @@ def specs [
 
   # 2. empty set contains nothing.
   (Test.prop "empty-has-nothing"
-    [ r.string charset (r.int 1 12) ]
+    [ (r.string charset (r.int 1 12)) ]
     [ var [[key] ((TrieSet.make) key TrieSet.has) not ] ])
 
   # 3. set then get returns exactly the value stored.
   (Test.prop "set-then-get"
-    [ do { k: [r.string charset (r.int 1 12)], v: [r.int 0 1000] } ]
+    [ do { k: [(r.string charset (r.int 1 12))], v: [(r.int 0 1000)] } ]
     [ var [[in]
         def k (in "k" get)
         def v (in "v" get)
@@ -94,7 +111,7 @@ def specs [
 
   # 4. every inserted key is present afterwards (bulk no-false-negatives).
   (Test.prop "bulk-all-present"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 1 15) ]
+    [ (key-list 8 1 15 r) ]
     [ var [[ks]
         def s (ks set-of)
         (ks each [ var [[k] s k TrieSet.has end ] ]) all end
@@ -103,7 +120,7 @@ def specs [
   # 5. size never exceeds the number of inserted keys (it equals the
   #    distinct count; duplicates collapse).
   (Test.prop "size-bounded-by-inserts"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 1 15) ]
+    [ (key-list 8 1 15 r) ]
     [ var [[ks]
         def s (ks set-of)
         (s TrieSet.size) (ks size) lte
@@ -112,7 +129,7 @@ def specs [
   # 6. prefix soundness: everything keys-with-prefix returns really does
   #    start with that prefix.
   (Test.prop "prefix-sound"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 1 15) ]
+    [ (key-list 8 1 15 r) ]
     [ var [[ks]
         def s (ks set-of)
         def p (ks get 0)
@@ -122,7 +139,7 @@ def specs [
 
   # 7. after deleting a key it is gone, and the set shrinks by exactly one.
   (Test.prop "delete-removes-one"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 2 15) ]
+    [ (key-list 8 2 15 r) ]
     [ var [[ks]
         def s (ks set-of)
         def k (ks get 0)
@@ -136,7 +153,7 @@ def specs [
   # 8. fuzzy soundness: every key returned by `within` is a real member.
   #    The query is an actual key, so the result is never empty.
   (Test.prop "within-subset"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 1 12) ]
+    [ (key-list 6 1 12 r) ]
     [ var [[ks]
         def s (ks set-of)
         def hits (s (ks get 0) 2 TrieSet.within)
@@ -145,7 +162,7 @@ def specs [
 
   # 9. within 0 of a stored key is exactly that key.
   (Test.prop "within-zero-is-exact"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 1 12) ]
+    [ (key-list 6 1 12 r) ]
     [ var [[ks]
         def s (ks set-of)
         def q (ks get 0)
@@ -155,7 +172,7 @@ def specs [
 
   # 10. wildcard soundness: every key matching a pattern is a real member.
   (Test.prop "match-subset"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 1 12) ]
+    [ (key-list 6 1 12 r) ]
     [ var [[ks]
         def s (ks set-of)
         def pat ( (ks get 0) "*"  add)
@@ -165,7 +182,7 @@ def specs [
 
   # 11. from-keys round-trips: rebuilding from extracted keys is identical.
   (Test.prop "from-keys-roundtrip"
-    [ r.list-of [ r.string charset (r.int 1 6) ] (r.int 1 12) ]
+    [ (key-list 6 1 12 r) ]
     [ var [[ks]
         def viaadd  ((ks set-of) TrieSet.keys)
         def viafrom ((ks TrieSet.from-keys) TrieSet.keys)

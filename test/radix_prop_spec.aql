@@ -16,6 +16,23 @@ import "../trie.aql"
 def charset "abcdefghijklmnopqrstuvwxyz"
 
 
+# Generator member calls are grouped — `(r.string …)`, `(r.int …)`: the bare
+# form declines its compile stamp and runs on the interpreter (boru
+# COMPILABLE-SUBSET §5, boru-lang/boru#528). A list-of generator (a member
+# call taking an inner generator body) lives in `key-list`, called grouped,
+# because inline it either declines or, grouped inline, loses `r`; the call
+# inside `key-list` must stay grouped too (bare, it repeats its first draw).
+# Same draws, same order, same values per seed.
+
+# A list of (r.int lo hi) random keys, each 1..maxlen chars from `charset`.
+# Call: `(key-list maxlen lo hi r)`.
+def key-list fn [
+  [maxlen:Integer lo:Integer hi:Integer r:Map] [List] [
+    (r.list-of [ r.string charset (r.int 1 maxlen) ] (r.int lo hi))
+  ]
+]
+
+
 # Call: `s pfx starts-with`.
 def starts-with fn [
   [pfx:String s:String] [Boolean] [
@@ -58,7 +75,7 @@ def specs [
 
   # 1. add then has.
   (Test.prop "add-then-has"
-    [ r.string charset (r.int 1 12) ]
+    [ (r.string charset (r.int 1 12)) ]
     [ var [[key]
         def s ((RadixSet.make) key RadixSet.add)
         (s key RadixSet.has)
@@ -66,12 +83,12 @@ def specs [
 
   # 2. empty has nothing.
   (Test.prop "empty-has-nothing"
-    [ r.string charset (r.int 1 12) ]
+    [ (r.string charset (r.int 1 12)) ]
     [ var [[key] ((RadixSet.make) key RadixSet.has) not ] ])
 
   # 3. set then get.
   (Test.prop "set-then-get"
-    [ do { k: [r.string charset (r.int 1 12)], v: [r.int 0 1000] } ]
+    [ do { k: [(r.string charset (r.int 1 12))], v: [(r.int 0 1000)] } ]
     [ var [[in]
         def k (in "k" get)
         def v (in "v" get)
@@ -81,7 +98,7 @@ def specs [
 
   # 4. all inserted keys present.
   (Test.prop "bulk-all-present"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 1 15) ]
+    [ (key-list 8 1 15 r) ]
     [ var [[ks]
         def s (ks radix-of)
         (ks each [ var [[k] s k RadixSet.has end ] ]) all end
@@ -89,7 +106,7 @@ def specs [
 
   # 5. prefix soundness.
   (Test.prop "prefix-sound"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 1 15) ]
+    [ (key-list 8 1 15 r) ]
     [ var [[ks]
         def s (ks radix-of)
         def p (ks get 0)
@@ -99,7 +116,7 @@ def specs [
 
   # 6. delete removes exactly one.
   (Test.prop "delete-removes-one"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 2 15) ]
+    [ (key-list 8 2 15 r) ]
     [ var [[ks]
         def s (ks radix-of)
         def k (ks get 0)
@@ -113,7 +130,7 @@ def specs [
   # 7. CROSS-CHECK: a RadixSet and a TrieSet over identical keys expose the
   #    same sorted key list. Compression must be behaviour-preserving.
   (Test.prop "radix-matches-trie"
-    [ r.list-of [ r.string charset (r.int 1 8) ] (r.int 1 20) ]
+    [ (key-list 8 1 20 r) ]
     [ var [[ks]
         def r (ks radix-of)
         def t (ks trie-of)
@@ -122,7 +139,7 @@ def specs [
 
   # 8. longest-prefix over nested keys returns the longest stored prefix.
   (Test.prop "longest-prefix-nested"
-    [ r.string charset 10 ]
+    [ (r.string charset 10) ]
     [ var [[s]
         def k1 (s slice 0 2)
         def k2 (s slice 0 5)
