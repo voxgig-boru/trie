@@ -27,8 +27,9 @@ def charset "abcdefghijklmnopqrstuvwxyz"
 # COMPILABLE-SUBSET §5, boru-lang/boru#528). A list-of generator (a member
 # call taking an inner generator body) lives in `key-list`, called grouped,
 # because inline it either declines or, grouped inline, loses `r`; the call
-# inside `key-list` must stay grouped too (bare, it repeats its first draw).
-# Same draws, same order, same values per seed.
+# inside `key-list` must stay grouped too (bare, the generators calling it
+# decline again). `r.list-of` still runs its element body on the interpreter,
+# once per key (DX-REPORT). Same draws, same order, same values per seed.
 
 # A list of (r.int lo hi) random keys, each 1..maxlen chars from `charset`.
 # Call: `(key-list maxlen lo hi r)`.

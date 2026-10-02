@@ -804,8 +804,9 @@ their compile stamp and ran on the interpreter. There were 41 such sites:
 storedfn$body: unapplied fn-value in body residual (dynamic apply not
 lowered)". The `do {k: […] v: […]}` generator reported "finalize left the
 unit unstamped" instead. All of these belong to boru COMPILABLE-SUBSET §5
-(boru-lang/boru#528). After the rewrites below the count is **0**, and no
-site was left on the interpreter:
+(boru-lang/boru#528). After the rewrites below the count is **0** in all
+five suites (and in the other six); the one thing it does not cover is
+noted after the list:
 
 - **Direct draws are grouped.** `[ r.string charset (r.int 1 12) ]` becomes
   `[ (r.string charset (r.int 1 12)) ]`.
@@ -818,11 +819,39 @@ site was left on the interpreter:
 - **`r.list-of` generators move into one named fn per suite.** The spec
   suites use `key-list maxlen lo hi r` and `trie_prop_test` uses
   `fixed-keys klen n r`. The fn's body groups the call, and the generator
-  calls the fn grouped. Two other spellings compile but give the wrong
-  answer. Grouping the inline nested call loses `r`, so the property fails
-  with `undefined word: r`. Leaving the call bare inside the fn silently
-  repeats its first draw. Both are known compiler divergences that are being
-  recorded upstream.
+  calls the fn grouped. The other spellings go wrong:
+  - **Grouped inline** (`[ (r.list-of [ r.string charset (r.int 1 8) ]
+    (r.int 1 15)) ]`, or `[(r.list-of [r.string charset 5] 12)]`): it
+    compiles, but the inner body loses `r`. The property reports `ok: false`
+    on its first run with `undefined word: r`, where the interpreter
+    generates the lists. This is an answer divergence, in both the
+    `Test.prop` and the `Test.check-prop` context.
+  - **Bare as the fn's result**, which depends on the shape. In
+    `fixed-keys` (`r.list-of [r.string charset klen] n`, a fixed count) it
+    compiles and silently repeats its first draw: at seed 7, 6 keys come
+    back as `["govhg", "govhg", …]` where the interpreter draws `["govhg",
+    "gyywy", "mbisr", …]`, and `trie_prop_test` still prints `all green`.
+    In `key-list`, whose count is itself a draw (`… (r.int lo hi)`), it
+    does not repeat. The spec suites' four list generators decline again
+    ("finalize left the unit unstamped") and answer correctly on the
+    interpreter. Through a top-level `Test.check-prop`, the whole program
+    fails to compile ("fn key-list: body leaves extra values").
+
+  Neither answer divergence is recorded in boru's `NUR.md` or
+  `COMPILABLE-SUBSET.md` (64c5ab2). The same two recur in the aless,
+  bloom-filter and stats migrations. A Go probe (`RunInterp` against
+  `RunCompiledReason`) reproduced both on this library's shapes.
+
+**What the 0 does not cover.** `-compile-report` lists runtime stamp
+attempts only. The element body of `r.list-of` is never one of them:
+`[ r.string charset (r.int 1 maxlen) ]` in `key-list` and
+`[r.string charset klen]` in `fixed-keys`. `r` is a run-time Map, so the
+call cannot hand `rand-list-of` a compiled closure. The native runs each
+element on a pooled interpreter sub-engine, and it did so before the rewrite
+too. boru's interpreter-entry hook shows it: under `RunCompiledReason`, a
+list generator records one unattributed `Engine.Run` per drawn key, old and
+new. The rewrite only removes the generator's own `CallBoru`. The direct
+draws and the `do {…}` generator leave no interpreter entry at all.
 
 The `runs`, `seed` and `max-shrinks` arguments and every property body are
 unchanged. A scratch harness proved that the values are identical. It ran the
@@ -831,7 +860,13 @@ HEAD and rewritten generators in each suite's own context: `Test.prop` plus
 generator ran at seed 1 with the suite's own run count, and at seeds 4, 250
 and 99999 with 25 runs each. The harness printed every generated value and
 each result map. It also ran each suite with its real properties at the same
-seeds. The outputs were byte-identical in every case.
+seeds. The outputs were byte-identical in every case. An independent re-check
+used seeds 3, 777, 4242 and 123457, at 30 runs each. It printed every
+generated value and ran the real properties, in both contexts. It also ran
+every generator under a deliberately failing property with 200 shrinks,
+comparing `failing-input`, `shrunk-input`, `shrunk-source` and
+`shrunk-cost`. All 45 old/new output pairs were byte-identical, and so was
+each suite's own output.
 
 ### Open upstream defects (found or confirmed in this migration)
 

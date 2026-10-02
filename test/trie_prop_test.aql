@@ -33,8 +33,10 @@ def charset "abcdefghijklmnopqrstuvwxyz"
 # boru-lang/boru#528). A list-of generator (a member call taking an inner
 # generator body) lives in `fixed-keys`, called grouped, because inline it
 # either declines or, grouped inline, loses `r`; the call inside `fixed-keys`
-# must stay grouped too (bare, it repeats its first draw). Same draws, same
-# order, same values per seed.
+# must stay grouped too (bare, it compiles but repeats its first draw, and
+# every property still passes). `r.list-of` still runs its element body on
+# the interpreter, once per key (DX-REPORT). Same draws, same order, same
+# values per seed.
 
 # A list of `n` random keys, each exactly `klen` chars from `charset`.
 # Call: `(fixed-keys klen n r)`.
